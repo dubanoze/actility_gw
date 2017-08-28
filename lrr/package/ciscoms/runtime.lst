@@ -1,0 +1,8 @@
+lrr/MANIFEST
+lrr/scripts/POSTINSTALL
+lrr/scripts/PREUNINSTALL
+lrr/scripts/RESTART
+lrr/scripts/START
+lrr/scripts/STATUS
+lrr/scripts/STOP
+lrr/scripts/VERSION

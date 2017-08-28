@@ -1,0 +1,21 @@
+if [ -z "$ROOTACT" ]
+then
+        Error "ROOTACT not specified"
+        exit 1
+fi
+
+. $ROOTACT/rtbase/base/system
+
+if [ ! -f $ROOTACT/lib/libnewt.a ]
+then
+        echo "libnewt.a not available drop GUI suplog build"
+        exit 1
+fi
+if [ ! -f $ROOTACT/lib/libslang.a ]
+then
+        echo "libslang.a not available drop GUI suplog build"
+        exit 1
+fi
+
+make -f makefile $*
+

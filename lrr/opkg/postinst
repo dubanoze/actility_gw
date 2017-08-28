@@ -1,0 +1,6 @@
+#!/bin/sh
+
+#echo "after install ($*)"
+ROOTACT=/mnt/apps/actility
+export ROOTACT
+/mnt/apps/actility/lrr/com/sysconfiglrr.sh

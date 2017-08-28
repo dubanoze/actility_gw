@@ -1,0 +1,41 @@
+
+dBm to mW conversion:
+
+formula :
+P = 1mW x 10 ^ (D/10)
+unit P : mW
+unit D : dBm
+
+abacus :
+dBm	mW
+0	1
+1	1.26
+2	1.58
+3	1.99
+4	2.51
+5	3.16
+6	3.98
+7	5.01
+8	6.31
+9	7.94
+10	10
+11	12.6
+12	15.85
+13	19.95
+14	25.12
+15	31.6
+16	39.8
+17	50.11
+18	63.1
+19	79.43
+20	100
+21	125.9
+22	158.49
+23	199.53
+24	251.19
+25	316.23
+26	398.1
+27	501.19
+
+More than 20dBm require a special Kerlin hardware with new softwares Semtech
+and Actility. Not available.

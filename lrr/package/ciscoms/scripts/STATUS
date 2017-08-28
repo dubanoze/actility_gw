@@ -1,0 +1,26 @@
+#!/bin/sh
+# Script to return LRR process run status
+# Must return status code 0 if running or non-zero if NOT running.
+
+
+# Process passed-in platform environment
+# variables such as LRR_ROOT (if needed).
+ROOTACT=$LRR_ROOT
+export ROOTACT
+
+if [ -f ${ROOTACT}/lrr/com/_parameters.sh ]
+then                  
+    . ${ROOTACT}/lrr/com/_parameters.sh 2>&1 >/dev/null
+fi
+
+#Check if LRR is running.
+output=`$SERVICELRR status`
+
+# Following would return status code zero only if
+# there is a match.
+echo $output | grep "is started"
+retcode=$?
+
+# Must return 0 if running. Return non-zero if not running.
+exit $retcode
+

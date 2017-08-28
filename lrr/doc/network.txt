@@ -1,0 +1,99 @@
+
+Network volume/load LRR <-> LRC
+###############################
+
+All sizes are relative to TCPIP/IEC104/LRR-LRC protocols, real sizes on physical 
+networks such as 2/3/4G or satelitte are unknown. It is difficult to estimate
+volume due to TCP retries and volume due to ACK/TCP and ACK/IEC window mechanism.
+
+
+Lora
+####
+
+Lora packet size:
+----------------
+
+Overhead for TCP/IPv4 is : 40B
+
+Overhead for IEC/104/APCI is : 6B
+
+Overhead for LRR-LRC is : 49B
+	- 20B for internal data (LRRid, protocol version, message type ...)
+	- 29B for radio meta data (RSSI, SNR, times, channel, board, ...)
+
+Total overhead is : 95B
+
+Lora packet exchange:
+--------------------
+
+In case of low traffic each packet is acked at IEC and TCP level. When the load
+increases window mechanism reduce the overhead due to ACKs at both level.
+
+Total overhead is : 40B (tcp/ack) + 46B (iec/ack)
+
+
+IEC
+###
+
+Each 20s the IEC protocol exchange test link message in both direction with the
+primary and the secondary LRC.
+
+This can be configured with:
+	[laplrc:X]
+		iec104t3=20
+
+
+TCP
+###
+
+LRR uses standard TCP keepalive feature on sockets to the primary and the 
+secondary LRC.
+
+For the socket to the primary LRC, keepalive can be configured with:
+ 	[tcp]
+		tcpkeepalive=1
+		tcpkeepidle=5
+		tcpkeepintvl=5
+		tcpkeepcnt=3
+
+For the socket to the secondary LRC, keepalive can be configured with:
+ 	[tcp]
+		tcpkeepalivelow=1
+		tcpkeepidlelow=5
+		tcpkeepintvllow=30
+		tcpkeepcntlow=3
+
+
+LRR statistics and configuration reporting
+##########################################
+
+LRR send several statistics messages to primary and secondary LRC. The user sizes
+of these messages are:
+	- general stats: 210B
+	- LRR config/stat report: 216B
+	- LRR config/stat report by LRC: 71B (x2)
+	- WAN config/stat report: 158B
+	- WAN config/stat report by network interface: 35B (x2)
+	- radio config/stat report: 40B
+
+The frequencies of these reports can be configured with:
+
+	[lrr]
+		statrefresh=300
+		configrefresh=86400
+		wanrefresh=300
+		rfcellrefresh=300
+		
+
+LRR round trip time calculation
+###############################
+
+For each network interface the LRR compute the RTT to the primary LRC by sending
+ICMP packet with 4 data bytes every 60s.
+
+The frequency can be configured with:
+
+	[lrr]
+		pingrttperiod=60
+
+The feature can be deactivated by setting frequency to 0.

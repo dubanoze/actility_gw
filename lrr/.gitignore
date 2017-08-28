@@ -1,0 +1,17 @@
+*.o
+*.x
+*.a
+_whatstr.h
+_halversion.h
+core
+*.swp
+suplog/_suplogver.h
+util_rssi_histogram/util_rssi_histogram
+util_spectral_scan/util_spectral_scan
+sftp/sftp
+nano/nano
+gitstatus.txt
+com/tclassb
+.settings/
+.cproject
+.project

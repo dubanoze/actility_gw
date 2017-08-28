@@ -1,0 +1,6 @@
+#
+#	included by all shells
+#
+
+. $ROOTACT/rtbase/base/TARGET
+. $ROOTACT/rtbase/base/command.sh

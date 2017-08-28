@@ -1,0 +1,12 @@
+# vim: ft=make:
+#
+#	included by all makefile
+#
+
+MKWHAT=$(ROOTACT)/rtbase/shells/mkwhat.sh
+MKHALV=$(ROOTACT)/rtbase/shells/mkhalversion.sh
+MKPKGSOURCE=$(ROOTACT)/rtbase/shells/mktar.sh
+MKPKGRUNTIME=$(ROOTACT)/rtbase/shells/mkruntime.sh
+MKXO=$(ROOTACT)/xo/com/mkxo.x
+MKSHLIB=$(ROOTACT)/rtbase/shells/mkshlib.sh
+MKOPKG=$ROOTACT/rtbase/shells/mkopkg.sh

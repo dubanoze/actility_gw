@@ -1,0 +1,2677 @@
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.38
+Date    : 2017-07-25
+
+New Features:
+------------
+ID      : RDTP-1334 / NFR724
+Gateway : Foxconn Pico
+Design	: 1.5
+System  : fcpico
+HAL     : All
+Desc	: lrr generates the same LRR UUID for all fcpico base stations
+	Use "nvram get bs_id" to get the LRR GID part of the UUID instead
+	of calling config_id.sh script
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.37
+Date    : 2017-07-13
+
+Fixed Bugs:
+-----------
+
+ID	: RDTP1255
+Gateway : All
+Design	: 2
+System  : All
+HAL     : All
+Desc	: getid.sh: OUI and UID displayed in uppercase
+
+
+New Features:
+-----------
+
+ID	: NFR724.4b
+Gateway : focxonn pico
+Design	: 1.5
+System  : fcpico
+HAL     : 4.0.0
+Desc	: netconfig.sh: use 'nvram' to get/set network configuration
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.36
+Date    : 2017-07-10
+
+Merge modifications made by Verso since 2.2.27
+
+New Features:
+-----------
+
+ID      : NFR806
+Gateway : Cisco Corsica
+Design  : 2.1
+System  : ciscoms
+HAL     : 4.0.1
+FPGA    : 58
+Desc    : Corsica - LBT/ClassB LRR
+        Added fixes for:- nsswitch,host
+			- RSSI now showing chan instead sig
+			- added ciscoms scripts for rebooting GW, backup, restore, firmware upgrade, ...
+			- fix for showing ipaddr
+			- fix for showing nptd sync
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.35
+Date    : 2017-07-10
+
+New Features:
+-----------
+
+ID	: NFR971
+Gateway : Cisco Corsica
+Design	: 2.1
+System  : ciscoms
+HAL     : 5.0.0
+Desc	: integration of LRR with HAL 5.0.x for CISCO IXM 1 box (Corsica) 
+	This HAL version brought some important modifications about the GPS data
+	reading method. GPS management is now in a separated thread and we can 
+	read the specific UBX frames in addition to the standard NMEA frames
+	See HAL 5.0.0 Release notes
+
+ID	: NFR000
+Gateway : oielec
+Design	: 1.5
+System  : oielec
+HAL     : 4.1.1
+Desc	: HAL 4.0.1 => HAL 4.1.1
+
+	This is just a porting of the last version of the LRR with the OIELEC
+	HAL version 4.1.1
+
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.34
+Date    : 2017-07-05
+
+Fixed Bugs:
+-----------
+
+ID	: RDTP-857/FIX5109
+Gateway : All
+Design	: 1.5
+System  : All
+HAL     : All
+Desc	: LBT is breaking class C devices
+
+	The current HAL does not accept TX_IMMEDIATE mode when LBT is enabled.
+	Unluckily the LRR has already used TX_IMMEDIATE to send packet for 
+	class C devices.
+
+	To bypass this strict control the LRR now uses TX_TIMESTAMPED + 5ms
+	for class C only when LBT is enabled. This new behaviour can be seen
+	in traces:
+		"LRR DELAY -> tx mode immediate with LBT ..."
+
+ID	: RDTP-680/FIX4589
+Gateway : All
+Design	: 1.5
+System  : All
+HAL     : All
+Desc	: on LBT failure on RX1 LRR does try RX2
+
+	+ for classA if LBT stops the packet the LRR will try RX2
+
+	+ for classC if LBT stops the packet the LRR will retry each 3s during 60s
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.33
+Date    : 2017-07-03
+
+New Features:
+-----------
+
+ID	: NFR000
+Gateway : oielec
+Design	: 1.5
+System  : oielec
+HAL     : 4.1.1
+Desc	: HAL 4.0.1 => HAL 4.1.1
+
+	This is just a porting of the last version of the LRR with the OIELEC
+	HAL version 4.1.1
+
+ID	: NFR000
+Gateway : all
+Design	: all
+System  : all
+HAL     : all
+Desc	: rtbase version used for compilation
+
+	+ ./lrr/com/lrr.x --version
+
+	@(#) Actility rtbase 1.4.23 09/06/17 target=oielec host=debian-armhf
+	@(#) Actility lrr 2.2.32 03/07/17 target=oielec host=debian-armhf
+	@(#) Semtech hal Version: 4.1.1;
+	HAL 4.1.1
+	spi=yes
+	x1=yes
+
+	+ from LRC CLI lrr shell xxxxxxx versions ?
+
+	@(#) Actility rtbase 1.4.23 09/06/17 target=oielec host=debian-armhf
+	@(#) Actility lrr 2.2.32 03/07/17 target=oielec host=debian-armhf
+	@(#) Semtech hal Version: 4.1.1;
+
+	+ furthermore a check in lrr/MAKE is added to verify that the version
+	of the rtbase library is the same that the version saved in git. The
+	version is created automaticaly in reg_comp_libs/$SYSTEM/rtbase.version
+	the file must be gited manually.
+
+
+ID	: NFR000
+Gateway : Semtech picocell 
+Design	: 1.0
+System  : linux-x86
+HAL     : 0.0.1 ~ 4.1.1
+Desc	: target linux-x86 generic to use with a semtech picocell (usb/tty
+key)
+
+	This is a new target system (linux-x86) to be used:
+	- on a 32 bits generic linux system (ubuntu, debian, ...)
+	- with a Semtech picocell which takes the form of an USB/TTY key
+	- ref design v1.0 (no LBT, no rfscan)
+	- no GPS
+	- for tests labs only
+
+
+	Before installing/starting the LRR, check connectivity:
+
+	- /dev/ttyACMx must be present when the USB key is inserted
+		crw-rw---- 1 root dialout 166, 0 2017-07-03 11:58 /dev/ttyACM0
+
+	- lsusb linux command must give a result like this:
+	...
+	Bus 004 Device 026: ID 047a:374a Semtech Corp.
+	...
+
+	If the string "047a:374a Semtech Corp" is not present or present with
+	vendorID/productID different from 047a:374a; the firmware is not
+	installed on the key.
+
+	- the linux user which installs/runs the LRR must be a member of the 
+	group associated to the device (here dialout).
+		uid=1000(actility) gid=1000(actility)
+		groupes=1000(actility),20(dialout)
+
+
+	After installation:
+
+	- run "./lrr/com/sysconfiglrr.sh" as usual. Note that there is no 
+	init.d service LRR , no GUI , no user support.
+
+	- recheck connectivity: ./lrr/com/lrr.x --stpicoid
+		./lrr/com/lrr.x --stpicoid
+
+	Lauching LRR software:
+
+	- cd $ROOTACT/lrr/com ; ./lrr.x &
+
+
+	Compiling:
+
+	+ cd $ROOTACT/rtbase ; ./MAKE and choose linux-x86
+
+	+ if you start with a source version do not forget to compile the
+	semtech HAL picoGW_hal in 32bits mode installed in $ROOTACT. Edit all
+	Makefile in picoGW_hal and add -m32 to CC := $(CROSS_COMPILE)gcc -m32
+
+	+ ln -s picoGW_hal lora_gateway_tty_x1
+
+	+ cd $ROOTACT/lrr ; ./MAKE
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.32
+Date    : 2017-06-30
+
+Fixed Bugs:
+-----------
+
+ID	: RDTP-690
+Gateway : All
+Design	: All
+System  : All
+HAL     : All
+Desc	: suplog.x - security problem with the menu "Export configuration and log files via FTP" 
+		Add forbidden characters ";|\`><&$()-[]{} " in every input fields in the SUPPORT CLI
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.31
+Date    : 2017-06-26
+
+New Features:
+-----------
+
+ID	: NFR724.4
+Gateway : focxonn pico
+Design	: 1.5
+System  : fcpico
+HAL     : 4.0.0
+Desc	: FCPICO: lrr uid constructed using the bs_id of the config_id.sh command
+
+ID	: NFR724.4
+Gateway : focxonn pico
+Design	: 1.5
+System  : fcpico
+HAL     : 4.0.0
+Desc	: lrr uid can be viewed in suplog
+
+ID	: NFR724.4b
+Gateway : focxonn pico
+Design	: 1.5
+System  : fcpico
+HAL     : 4.0.0
+Desc	: Suplog enhancement for ThingPark Enterprise
+Config key: lrr.ini: [suplog].networkconfigtpe, [suplog].networkconfiginterfile
+		[suplog].networkconfigntpfile, [suplog].networkconfigvpnfile
+
+	This new feature set the network configuration for "clean" gateways
+	in the scope of ThingPark Enterprise.
+	"Clean" gateways means the network configuration files must not have been
+	modified, or very little.
+
+	To activate the new menu in suplog the following key must be set:
+	lrr.ini:[suplog].networkconfigtpe=1
+
+	new shell in lrr/com/cmd_shells/fcpico/netconfig.sh:
+	This shell is used by suplog to read/write the configuration.
+	It use 3 files: /etc/network/interfaces, /etc/ntp.conf,
+	/usr/local/strongswan/etc/vpn.cfg
+	
+Fixed Bugs:
+-----------
+
+ID	: FIX4489 - RDTP-660
+Gateway : Orange Lamp (Foxconn) and multitech refdesign v1.0
+Design	: 1.0
+System  : fclamp and multitech refdesign v1.0
+HAL     : 4.1.3
+Desc	: FoxConn gateway - Lamp - rfscanv1 not working 
+	The rfscanv1 was working since 2.2.12 by executing an util_rssi_histogram intead of util_spectral scan when util_spectral was not present on ref design 1.0 
+	but at the end of the scan the lrr radio didn't restart properly and all communications were down. Now reboot fix the problem at the end of the scan.
+	ONLY FOR KNOWN REF DESIGN 1.0 (fclamp and multitech refdesign v1.0)
+	
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.30
+Date    : 2017-06-02
+
+Fixed Bugs:
+-----------
+
+ID	: FIX4805
+Gateway : kerlink nano iFemtocell
+Design	: 1.5
+System  : wirmana
+HAL     : 4.1.3
+Desc	: Support NFR700 for wirmana: logs in ramdisk
+
+ID	: FIX4426
+Gateway : kerlink nano iFemtocell
+Design	: 1.5
+System  : wirmana
+HAL     : 4.1.3
+Desc	: add sftp support for wirmana
+
+
+New Features:
+-----------
+
+ID	: NFR000
+Gateway : kerlink nano iFemtocell
+Design	: 1.5
+System  : wirmana
+HAL     : 4.1.3
+Desc	: backup/restore for wirmana
+
+ID	: NFR000
+Gateway : kerlink nano iFemtocell
+Design	: 1.5
+System  : wirmana
+HAL     : 4.1.3
+Desc	: support new firmware 3.1.3
+
+	Specific upgrade.sh to handle read-only /.upgrade directory
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.29
+Date    : 2017-06-01
+
+New Features:
+-----------
+
+ID	: NFR000
+Gateway : tektelic
+Design	: specific
+System  : tektelic
+HAL     : 3.4.14
+Desc	: Support new format of /tmp/position file for GPS coordinates
+
+	New Format is:
+		Lock: yes
+		Latitude: 4304.98939N
+		Longitude: 07046.66976W
+		Altitude: 33.8
+	or:
+		Lock: no
+		Latitude: 0
+		Longitude: 0
+		Altitude: 0
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.28
+Date    : 2017-05-22
+
+Fixed Bugs:
+-----------
+
+ID	: FIX4215
+Gateway : tektelic
+Design	: specific
+System  : tektelic
+FPGA	: NA
+Desc	: Report correction done for option --exclude in dngentar.sh
+
+New Features:
+-----------
+
+ID	: NFR000
+Gateway : tektelic
+Design	: specific
+System  : tektelic
+HAL     : 3.4.14
+Desc	: Add features to tektelic gateway
+
+	- backup/restore
+	- rfscan
+	- get position from GPS
+	- class B (for beta tests)
+	- use HAL 3.4.14
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.27
+Date    : 2017-05-12
+
+New Features:
+-----------
+
+ID	: NFR806
+Gateway : Cisco Warbler
+Design	: 2.1
+System  : ciscoms
+HAL     : 4.0.1
+FPGA	: 58
+Desc	: Warbler - LBT/ClassB LRR
+	Class B support for ciscoms
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.26
+Date    : 2017-05-11
+
+New Features:
+-----------
+
+ID	: NFR896
+Gateway : Orange Lamp
+Design	: 1.0
+System  : fclamp
+HAL     : 4.1.3
+FPGA	: NA
+Desc	: Orange Lamp gateway - HAL 4.1.3 integration
+	NFR opened to track the request to integrate HAL 4.1.3 for the Orange Lamp gateway (Semtech Ref Design 1.0).
+
+Fixed Bugs:
+-----------
+
+ID	: FIX5104
+Gateway : all
+Design	: all
+System  : all
+HAL     : all
+FPGA	: NA
+Desc	: LRR 2.2.25 wirmaar : shell commands handling is incorrect
+	It appears with this version that shell commands are not handled the same way as previous version.
+
+	1/When using rfregtool command on this version RFRegion is not well updated on the LRR. It appears that LRR tries to download a tarball with an additional "!" character inside and received 550 response.
+
+	2/When using setiniparam command additional characters are put in ini files on the LRR.
+	
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.25
+Date    : 2017-05-05
+
+Fixed Bugs:
+-----------
+
+ID	: FIX0000
+Gateway : Cisco Warbler, Foxconn Macro GW2.1, Kerlink iBTS
+Design	: >= 2
+System  : ciscoms, fcloc, wirmaar
+HAL     : >= 4.0.0
+FPGA	: 58
+Desc	: Fine timestamps always set to 0
+	Call function sx1301ar_set_xtal_err
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.24
+Date    : 2017-04-25
+
+Fixed Bugs:
+-----------
+
+ID	: FIX4977
+Gateway : Cisco Warbler, Foxconn Macro GW2.1
+Design	: 2.1
+System  : ciscoms, fcloc
+HAL     : 4.0.0 for v2.1 gateways + Semtech patch LBT_FORBIDDEN
+FPGA	: 58
+Desc	: Radio start is not working on after radio stop
+	Update sx1301ar_stop arguments
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.23
+Date    : 2017-04-13
+
+New Features:
+-------------
+
+ID	: NFR895
+Gateway : Cisco Warbler, Foxconn Macro GW2.1
+Design	: 2.1
+System  : ciscoms, fcloc
+HAL     : 4.0.0 for v2.1 gateways + Semtech patch LBT_FORBIDDEN
+FPGA	: 58
+Desc	: New HAL LBT 4.0.0 and FPGA Integration
+	New configuration parameters added in lowlvlgw_<system>.ini:
+	[board:X]
+		nbdsp = 1		; number of dsp of the board (hal > 4.0.0)
+		boardtype = 1		; 1 = BRD_MASTER, 2 = BRD_SLAVE (hal > 4.0.0)
+		rxbandwidth = 7000000	; board rx bandwidth in hz (hal > 4.0.0)
+
+Fixed Bugs:
+-----------
+
+ID	: FIX4806
+Gateway : Cisco Warbler, Foxconn Macro GW2.1
+Design	: 2.1
+System  : ciscoms, fcloc
+HAL     : 4.0.0 for v2.1 gateways + Semtech patch LBT_FORBIDDEN
+FPGA	: 58
+Desc	: The patch provided by Semtech replace the LBT error code
+	  This is now: ERR_LBT_FORBIDDEN
+
+ID	: FIX4838
+Gateway : Cisco Warbler, Foxconn Macro GW2.1
+Design	: 2.1
+System  : ciscoms, fcloc
+HAL     : 4.0.0 for v2.1 gateways + Semtech patch LBT_FORBIDDEN
+FPGA	: 58
+Desc	: Update default dnmargincpu parameters to 100 to avoid "Tx in use 3" message
+	This parameters is used as an reducing adjustement when calculating the
+	postponing delay of the radio packet to emit.
+	As Semtech explained, the JiT scheduler of the packet forwarder can sometimes
+	be programmed a bit too late due to latencies compared to the current SX1301 internal counter.
+	This new default value avoid this behaviour by given more time to HAL and hw board to process.
+	In lrr.ini
+	[ciscoms]
+		dnmargincpu=100
+	[fcloc]
+		dnmargincpu=100
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.22
+Date    : 2017-04-11
+
+New Features:
+------------
+
+ID	: NFR900
+Design	: 1.5
+System	: Gemtek
+Desc	: Gemtek ODU GW V1.5 with LBT support 
+
+	Initial lrr integration on Gemtek native ubuntu GW.
+	New sector added in lgw.ini:
+	[gemtek]
+	        sx13xxpolling=10
+	        ramdir=/var/volatile/log/_LRRLOG
+	        spidevice=/dev/spidev1.0
+	[gemtek/netitf:0]
+	        enable=1
+	        name=eth0
+	        type=0
+	[gemtek/mfs:0]
+	        enable=1
+	        name=/
+	        type=r                          ; type root
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.21
+Date    : 2017-03-30
+Gateway : Cisco Warbler only
+System	: ciscoms
+Design	: 2.1
+HAL     : 4.0.0 for v2.1 gateways + Semtech patch LBT_FORBIDDEN
+FPGA	: 58
+
+
+Fixed Bugs:
+-----------
+
+ID	: FIX4806
+Design	: 2.1
+System	: ciscoms
+Desc	: The patch provided by Semtech replace the LBT error code
+	  This is now: ERR_LBT_FORBIDDEN
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.20
+Date    : 2017-04-10
+
+Fixed Bugs:
+-----------
+
+ID	: FIX4921
+Design	: all
+System	: all
+Desc	: NFR592 - Security problem on support account with network menu
+
+	The feature to edit network files with nano editor from suplog  is no 
+	more activated.  It is possible but discouraged to restore the feature 
+	by setting:
+
+	[suplog]
+	        networkconfigeditable=1
+
+New Features:
+------------
+
+ID	: NFR684
+Design	: all
+System	: wirma*|fcloc
+Desc	: LRRID requested from LRC/TWA
+Config key: lrr.ini:[lrr].uid,lrr.ini:[lrr].uidmode,_state.ini:[lrr].uidfromtwa
+
+	This feature is not yet activated by default.
+
+	To enable the function ~/lrr/com/sysconfiglrr.sh must be rerun on old
+	installations. Check if you get 2 news variables :
+		LRROUI=7076ff			; Kerlink IEEE/OUI
+		LRRGID=024b0b030008		; MAC@ on wirmav2
+	in "~/usr/etc/lrr/_parameters.sh" files.
+
+	The LRR process still computes a "local" LRRID (uid=hostname_mac/32)
+	or uses a forced one (uid=0xaabbccdd).
+
+	If uidmode is "local" LRR send the "local" LRRID got from [lrr].uid to
+	connect to LRCs and there is no change in behavior.
+
+	If uimode is "fromtwa" or "fromtwaonly", LRR first send a request to 
+	get a LRRID from TWA via LRC: 
+
+	-- if a positive response is got it is used instead of "local" LRRID 
+	and the response is saved in ~/usr/etc/lrr/_state.ini (uidfromtwa=0x...)
+	The reponse will be reused for next reboots or restarts or discs without
+	requesting again a LRRID.
+
+	-- if no response after 15s and "fromtwa" LRR tries with "local" LRRID
+	until next restarts.
+	-- if no response after 15s and "fromtwaonly" LRR restarts
+
+	-- if a negative response is got indicating LRCs do not support the 
+	feature, LRR uses "local" LRRID until next restarts.
+	-- if a negative response is got indicating LRCs do not find a LRRID for
+	this LRR, LRR restarts.
+
+
+	To renew the LRRID from a shell login:
+	suppress the "uidfromtwa=0x........" in ~/usr/etc/lrr/_state.ini"
+	restart the LRR /etc/init.d/lrr restart
+
+	To renew the LRRID from LRC CLI:
+	>>lrr shell 0b030008
+	>>setiniparam _state lrr uidfromtwa ?
+	>>restart ?
+
+	To get the LRRUID(OUI-GID) actually configured from LRC CLI:
+	>>getuid ?
+	<<<
+	#
+	OUI=7076ff
+	GID=024b0b030008
+	UID=7076ff-024b0b030008
+
+	<<< terminal ret=0 tms=230
+
+	To get vendors infos (OUI-GID) even if the feature is not yet
+	configured and even if the current LRR version does not support the 
+	feature (a patch is required in this case):
+	>>vinfos ?
+	<<<
+	#
+	Vendor oui:'7076ff' Gateway uid:'024b0b030008'
+
+	<<< terminal ret=0 tms=399
+
+
+
+ID	: NFR000
+Design	: 2.0
+System	: tektelic
+Desc	: Support last HAL 3.4.12 from Tektelic
+
+	With this HAL all the channels of a chip must be configured:
+	Modification to configure automatically a FSK channel to
+	avoid an error when starting the radio.
+	FSK chan use the same frequency as "stand-alone" channel. The
+	bitrate is always MR_10000, the bandwidth is always 125 Khz.
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.19
+Date    : 2017-03-24
+Gateway : Cisco Warbler only
+System	: ciscoms
+Design	: 2.1
+HAL     : 4.0.0 for v2.1 gateways (Cisco-flavoured)
+FPGA	: 58
+
+
+Fixed Bugs:
+-----------
+
+ID	: FIX4806
+Design	: 2.1
+System	: ciscoms
+Desc	: The error message ERR_LBT_ISSUE is now taken into account
+
+ID	: FIX4838
+Design	: 2.1
+System	: ciscoms
+Desc	: Update LgwTxFree test
+
+
+New Features:
+-------------
+ID	: NFR700
+System	: ciscoms
+Desc	: Use ram disk to write log files
+
+Ramdisk used is "/tmp/log/_LRRLOG"
+TRACE_0?.log files are moved to "/home/actility/traces/"
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.18
+Date    : 2017-03-21
+
+Fixed Bugs:
+-----------
+
+ID	: FIX4780
+Design	: all
+System	: tektelic
+Desc	: Display correct chan number when receiving uplink
+
+	Trace relative to rf_power also modified because tektelic changed
+	the type from int to float
+
+ID	: FIX4844
+Design	: 2.0
+System	: fcloc
+HAL	: 4.1.3
+Desc	: Add util_spectral_scan
+
+
+New Features:
+------------
+
+ID	: NFR883
+Design	: 2.0
+System	: all
+Desc	: Possibility to configure channel #8 for each chip 
+
+	The channel #8 can be configured for each chip
+	This allow to configure 500Khz bandwidth channel
+	example of lgw.ini:
+	[ifconf:0:0:8]
+	        enable=1
+	        freqhz=903000000
+	        bandwidth=1     ; 0=125K 1=500K 2=250K
+	        datarate=8      ; SF8
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.17
+Date    : 2017-03-14
+
+Fixed Bugs:
+-----------
+
+ID	: FIX4778
+Design	: all
+System	: all
+Desc	: LRR restarts in loop when using RFRegion with TxChannel LC255
+	  LRR restart is not due to TxChannel LC255 (ignored) but to the absence of defined RX2 in channels
+
+ID	: FIX4489
+Design	: 1.5
+System	: fcpico
+HAL	: 4.1.3
+Desc	: Disable util_rssi_scan on fcpico due to HAL > 4.0.0
+
+ID	: FIX0000
+Design	: 1.5
+System	: wirmav2
+HAL	: 4.1.1-klk + patch
+Desc	: PCN418 + Packet arrival time: airtime < lbt_time + max_dwell_time
+
+New Features:
+------------
+
+ID	: NFR758
+System	: all
+Desc	: Current traces level and ramdir use are reported to LRC
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.16
+Date    : 2017-03-03
+
+New Features:
+------------
+
+ID	: NFR000
+System	: all
+Desc	: FIX3993/allow access to GPS driver to processes outside LLR
+Config key: lrr.ini:[lrr].savegpsdata
+
+This feature should not be used if the ramdisk feature is not activated.
+
+When [lrr].savegpsdata is set to x != 0, the LRR process produces 2 new files.
+savegpsdata is the periodicity of files updates.
+
+- "~/var/log/lrr/gpstime.txt" :
+
+	<<<
+	gpsutcsec=1488549156
+	gpsutciso=2017-03-03T14:52:36.0+01:00
+	hostutcsec=1488549156
+	hostutciso=2017-03-03T14:52:36.171+01:00
+	clkdev=0.999000
+	ppscnt=15581
+	>>>
+
+	<<<
+	gpsutcsec=#sec utc from gps
+	gpsutciso=#sec utc from gps in ISO format
+	hostutcsec=#sec utc from host (linux gettimeofday(3C))
+	hostutciso=#time utc from host in ISO format
+	clkdev=clock deviation on the last 60 sec
+	ppscnt=#GPS updates (pps) since process start
+	>>>
+
+- "~/var/log/lrr/gpslocation.txt" :
+
+	<<<
+	rawlat=45.806656
+	rawlon=4.763441
+	rawalt=291
+	lrrlat=45.806591
+	lrrlon=4.763426
+	lrralt=283
+	loccnt=15618
+	rawbuf=$GPRMC,135316.00,A,4548.39961,N,00445.80641,E,0.063,,030317...
+	>>>
+
+	<<<
+	rawbuf=the raw frame from GPS
+	rawlat=extract from raw frame
+	rawlon=extract from raw frame
+	rawalt=altitude
+	lrrlat=smooth lattitude used by LRR
+	lrrlon=smooth longitude used by LRR
+	lrralt=smooth altitude used by LRR
+	loccnt=#GPS updates since process start
+	>>>
+
+These files can be used for debug purposes or by other process requiring GPS.
+
+
+
+New gateway:
+------------
+
+add support for OIELEC
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.15
+Date    : 2017-02-27
+
+
+New Features:
+------------
+
+ID	: NFR758
+System	: all
+Desc	: Set LRR Trace level via the Netwrok Manager or CLI LRC
+
+add 2 remote commands "trace <level>" and "tracep <level>" to change the level 
+of traces (level is [0..3]). Both commands change the current level and tracep
+does the change persistant (saved in _state.ini).
+
+ID	: NFR700
+System	: wirmav2
+Desc	: Use ram disk to write log files
+
+Ramdisk used is "/var/run/_LRRLOG" 
+TRACE_0?.log files are moved to "/mnt/mmcblk0p1/actility/traces/"
+
+ID	: NFR700
+System	: fcpico, fcloc, fcmlb
+Desc	: Use ram disk to write log files
+
+Ramdisk used is "/var/volatile/log/_LRRLOG" 
+TRACE_0?.log files are moved to "/home/actility/traces/"
+
+ID	: NFR000
+Gateway : Foxconn Macro v1.5
+System	: fcmlb
+HAL	: 4.1.3
+Desc	: Compile LRR with HAL 4.1.3 for fcmlb
+
+ID	: NFR000
+Gateway : Kerlink Nano Gateway (iFemtocell)
+System	: wirmana
+HAL	: 4.1.3-klk2
+Desc	: Compile LRR with HAL 4.1.3-klk2 for wirmana
+
+
+Fixed Bugs:
+-----------
+
+ID	: FIX4621
+Design	: 1.5 only
+System	: all
+Desc	: NFR743 : RFcell report does not contain Beacon counters
+
+ID	: FIX4317 (+FIX4609)
+Design	: 1.5 only
+System	: all
+Desc	: NFR743 : Delivery failed cause 3 is not set for classB downlinks
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.14
+Date    : 2017-02-20
+
+
+New Features:
+------------
+
+ID	: NFR000
+Gateway : Foxconn Macro v1.5
+System	: fcmlb
+HAL	: 4.1.1
+Desc	: Support LBT and GPS for FCMLB plateform
+
++ LBT can be fully configured from LRR/.ini files and from LRC/RFRegtools.
+
+~/lrr/config/lowlvlgw.ini
+
+[lbt]			; listen before talk feature (fpga+sx1272 required)
+	enable=0	; 0|1
+	rssitarget=-80	; threshold to detect if channel is busy or not
+	rssioffset=-4	; offset to apply to SX127x RSSI values
+	scantime=5000	; default scantime if not redefined by channels (us)
+	nbchannel=8	; max channels/frequencies used for LBT
+
+
++ It is possible to redefine [lbt].* keys at custom level.
+
+~/usr/etc/lrr/lowlvlgw.ini or lgw.ini
+
+
++ For each channel it is possible to activate LBT with default scan time value
+or with a specific value:
+
+~/usr/etc/lrr/channels.ini
+
+[channel:1]
+	freqhz=920600000;
+	lbtscantime=128	; overwrite 5000us default value with 128us
+[channel:2]
+	freqhz=920800000;
+	lbtscantime=1	; use 5000us default value (1us is not a valid value)
+[channel:3]
+	freqhz=921000000;
+	lbtscantime=0	; LBT disabled
+
+
+ID	: NFR700
+Gateway : Kerlink v3 iBTS
+System	: wirmaar
+HAL     : All
+Desc	: Use ram disk to write log files
+Config key: lrr.ini:[trace].ramdir
+
+	WARNING: installing this version will delete existing log files if
+	$ROOTACT/var/log/lrr is a real directory (not a symbolic link)
+
+	'ramdir' parameter define a directory used to write the current log file
+	ex:
+	[trace]
+		ramdir=/tmp/_LRRLOG
+
+	lrr.x create a symbolic link from $ROOTACT/var/log/lrr to 'ramdir' directory
+
+	Previous logs files are moved to '/user/actility/traces' directory
+
+	To disable the feature set [trace].ramdir to empty in lrr.ini
+
+ID	: NFR798
+Gateway : All
+System	: All
+HAL     : All
+Desc	: Protection against the absence of uplink radio packet over a period
+	In lrr.ini
+	[lrr]
+		autoreboottimer_nouplink=3600
+		autorestartlrrcnt_nouplink=4
+
+	If no radio uplink packet are received during more than "autoreboottimer_nouplink" seconds,
+	the LRR process auto restarts. After the LRR process has restarted "autorestartlrrcnt_nouplink" times
+	the gateway auto reboots
+	if "autoreboottimer_nouplink" is set to 0 the feature is disabled. Can not be less than 60 sec.
+	if "autorestartlrrcnt_nouplink" is set to 0, the lrr don't restart and the gateway reboots immediatly
+
+
+Fixed Bugs:
+-----------
+
+ID	: FIX4626
+Design	: all
+System	: all
+Desc	: suplog: disable the use of comma and/or put in between double quotes
+
+ID	: FIX4215
+Design	: all
+System	: WIRMAAR + WIRMANA
+Desc	: dngentar: use tar option -X instead of --exclude not supported
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.13
+Date    : 2017-01-27
+Gateway : Cisco Warbler only
+System	: ciscoms
+Design	: 2.1
+HAL     : 4.0.0 for v2.1 gateways (Cisco-flavoured)
+FPGA	: 58
+
+New Features:
+------------
+
+ID	: NFR806
+Desc	: Support LBT
+	  This version supports LBT on Cisco Warbler
+Config	: Dans lowlvlgw_ciscoms.ini
+	  [gen]
+	  	chipsperboard=2		; number of chips per board
+	  [lbt]
+		enable=0                ; 0|1
+		rssitarget=-80          ; threshold to detect if channel is busy or not
+		rssioffset=142          ; offset to apply to SX127x RSSI values
+		scantime=5000           ; default scantime if not redefined by channels (us)
+		nbchannel=8             ; max channels/frequencies used for LBT (max 16)
+	  ;
+	  ;       It is possible AND really not recommended to define the LBT frequencies
+	  ;       in a "lowlvlgw.ini" file.
+	  ;       The right place is in "channels.ini once RF tools will be able to
+	  ;       configure LBT.
+	  ;
+	  ;[lbt/chan_cfg:0]
+	  ;       freq=920600000
+	  ;       scantime=128
+	  ;[lbt/chan_cfg:1]
+	  ;       freq=920800000
+	  ;       scantime=5000           ; useless as it is the default value
+	  ;[lbt/chan_cfg:2]
+	  ;       freq=920800000
+	  ;       scantime=1              ; result is 5000 (lbt.scantime)
+
+
+Fixed Bugs:
+-----------
+
+ID	: FIX4523
+Desc	: RSSI calibration - Warbler
+	  This version provides the calibration parameters available from EEPROM using lora_pcamap utility
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.13
+Date    : 2017-02-03
+
+New Features:
+------------
+
+ID	: NFR000
+Gateway : tektelic 64 ch
+System	: tektelic
+HAL     : 3.4.9
+Desc	: Use Tektelic HAL 3.4.9
+
+Fixed Bugs:
+-----------
+
+ID	: FIX4522
+Design	: 1.5 only
+System	: all
+Desc	: NFR598 : on LBT failure on RX1 LRR does not try RX2 and always
+reports delivery success on RX2
+
+	Only false reports delivery success are corrected.
+	The LRR still not uses RX2 on LBT RX1 failures.
+
+ID	: FIX4528
+Design	: 1.5 only
+System	: wirmav2 only
+Desc	: Kerlink - firmware 3.x - suplog.x - VPN configuration not working
+
+	ipsec in /usr/sbin not in /usr/local/arm-xxx/bin
+
+ID	: FIX4364
+Gateway	: all
+Desc	: send failure status in sendIndication when the failure is detected
+	In somes cases, succes was returned in sendIndication whereas we
+	detected a sending failure.
+
+ID	: FIX3861
+Gateway	: all
+Desc	: huge values in iec statistics after a LAP LRC DISC
+	Reinitialize stat structure when a disconnection occurs
+
+New Features:
+------------
+
+ID	: NFR000
+Gateway : Kerlink 64 channels
+System	: wirmaar
+HAL     : 3.5.0
+Desc	: Support kerlink 64 channels
+	- change name of ipk architecture
+	- add lrr/config/lgwx8_us915.ini file
+	- add spi device for the 4th board in lrr.ini
+
+
+ID	: NFR596
+Design	: 1.5 only
+System	: wirmav2 only
+Desc	: CLASS B
+
+	+ timing to send beacon is no more based on the estimated UTC time of 
+	the LRR process (UTC time from NMEA + ms variation estimation).
+
+	Now we use the estimated UTC of the radio board, this can be done with
+	an undocumented feature of the HAL (found looking packet forwarder
+	code) by changing/restoring the default behaviour of the get trig PPS
+	register function.
+
+	lgw_reg_w(LGW_GPS_EN,0);
+	lgw_get_trigcnt(&trig_tstamp); 
+	lgw_reg_w(LGW_GPS_EN,1);
+
+	Note: Linux UTC time is "never" used , except for traces and ...
+
+	+ times reported to LRC for uplink packet also uses UTC time radio
+	board. Otherwise LRC will not be able to give precise replies to 
+	commands like TiminigBeaconRequest.
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.12
+Date    : 2017-01-23
+
+Fixed Bugs:
+-----------
+
+ID	: FIX4489
+Gateway	: all
+Desc	: auto swith to rfscanv0 (util_rssi_scan) if rfscanv1 (util_spectral_scan) is not available for a given platform
+
+ID	: FIX4494
+Gateway	: fcpico, fcmlb, fcloc
+Desc	: recall sysconfiglrr.sh after upgrade. Allows permissions/owner changes for suplog after each upgrade
+
+ID	: FIX4492
+Gateway	: fcpico, fcmlb
+Desc	: kill and clean all ssh child process when closing reverse ssh connection
+
+ID	: FIX4491
+Gateway	: fcpico
+Desc	: correct detection of Pico GW 1.5 and Orange Lamp systems in sysconfiglrr.sh
+
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.11
+Date    : 2017-01-12
+
+Design	: 1.5 only
+System	: wirmav2 only
+GCC	: arm-klk-linux-gnueabi for GNU/Linux 3.10.0
+
+	This version is now compiled with a new gcc kerlink toolchain
+
+	Check on SOP4 / wirmaV2_wirgrid_v2.3: 
+		- lrr.x process is ok
+		- suplog.x process is ok
+		- radio is ok
+		- sftp is ko (libc.so too old)
+	Check on SOP3 / wirmaV2_wirgrid_v2.1: 
+		- lrr.x process is ok
+		- suplog.x process is ok
+		- radio is ok
+		- sftp is ko (libc.so too old)
+	Check on SOP3 / wirmaV2_wirgrid_v1.x: 
+		- lrr.x process is ok
+		- radio can not be checked because FPGA firmware is not 
+		compatible with HAL4.X
+		- sftp is ko (libc.so too old)
+
+New Features:
+------------
+
+ID	: NFR596
+Design	: 1.5 only
+System	: wirmav2 only
+Desc	: CLASS B
+
+	Beacon packets are operational and fully driven by the LRC (>=1.6.7).
+	Class B downlink packets are operational
+
+	GPS signal must be as good and stable as possible.
+
+	[lrr]
+		; to synchronize GPS PPS and radio board clock
+		; this is mandatory for beacon and classb
+		usegpstime=1	
+
+	[gen]
+		; do not invert polarity for beacon
+		invertpolbeacon=0	
+
+	[classb]
+		; for one classb DL packet use all ping slots on 2 periods
+		; activated only if slot count per period is less than 16
+		; debug and tests only !!!
+		useallslot=0	
+
+ID	: NFR064
+Gateway : Foxconn Pico 1.5
+System	: fcpico
+HAL     : 4.0.0
+Desc	: Support fcpico plateform
+	Add new plateform fcpico to differentiate from fcmlb
+	Compiled with HAL 4.0.0 but no LBT support yet
+	Support LoRa LED on front panel
+	Check support user account creation
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.11
+Date    : 2017-01-13
+
+New Features:
+------------
+
+ID	: NFR684
+Design	: all
+System	: all
+Desc	: Get lrrid from twa
+
+	sysconfiglrr.sh set LRROUI and LRRUID in _parameters.sh, using getid.sh
+
+	in main.c, when receiving EV_LK_START, try to get lrrid from twa
+
+	when lrrid is received or when timeout fires, use the lrrid (received
+	or default) and never try again to get lrrid from twa
+
+	the definition of OUI and UID is only in getid.sh
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.10
+Date    : 2017-01-06
+
+Fixed Bugs:
+-----------
+
+ID	: FIX0000
+Gateway	: kerlink only
+Design	: 1.5 only
+System	: wirmana only
+HAL	: 4.0.0-3
+Desc	: util_spectral_scan for wirmana
+	  This version provides the util_spectral_scan compiled by Kerlink,
+	  based on HAL 4.1.1
+
+ID	: FIX4425
+Gateway	: kerlink only
+Design	: 1.5 only
+System	: wirmana only
+HAL	: 4.0.0-3
+Desc	: closessh kill sshpass and ssh processes
+	  killing ssh process close the port on 'support' machine
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.9
+Date    : 2016-12-20
+
+Fixed Bugs:
+-----------
+
+ID	: FIX0000
+Gateway	: kerlink only
+Design	: 1.5 only
+System	: wirmav2 only
+HAL	: 4.1.1-KLK-release
+Desc	: New release of HAL
+	LBT 5000us scantime
+	LBT SF7
+	util_spectral_scan RSSI
+
+
+New Features:
+------------
+
+ID	: NFR592
+System	: wirmav2 only
+Desc	: LRR support account enhancement
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.8
+Date    : 2016-12-19
+
+Fixed Bugs:
+-----------
+
+ID	: FIX4292
+Desc	: NFR703 : DlChannelReq duty cycle for assymetric downlink channel
+not taken into account
+
+	DlChannelReq must also be searched in a sorted downlink channels table.
+
+ID	: FIX4293
+Desc	: NFR703 : DlChannelReq downlink indication does not use Tx channel information
+
+	DlChannelReq must also be searched in a sorted downlink channels table.
+
+
+New Features:
+------------
+
+ID	: NFR596
+Design	: 1.5 only
+System	: wirmav2 only
+Desc	: CLASS B
+
+	Beacon packets are operational and fully driven by the LRC (>=1.6.7).
+	Class B can be used for tests only.
+
+	GPS signal must be as good and stable as possible.
+
+	[lrr]
+		usegpstime=1	; to synchronize GPS PPS and radio board clock
+
+	
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.8
+Date    : 2016-12-19
+
+New Features:
+------------
+
+ID	: NFR737
+Desc	: support kerlink nano gateway (WIRMANA)
+
+	Leds 2 and 3 managed by the lrr
+	led 2 = lrc connection state:
+		* off = lrr stopped
+		* blinking red = lrr trying to connect to the lrc
+		* green = connected to the lrc
+	led 3 = lora traffic:
+		* green = uplink received
+		* red = downlink sent
+
+	Limitation: backup/restore not supported
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.7
+Date    : 2016-12-16
+
+WARNING: This version requires a FPGA upgrade. Installing kerlink
+	 fpga-updater_48_klk_lpbs.ipk is required.
+
+Fixed Bugs:
+-----------
+
+ID	: FIX4394
+Desc	: WIRMAAR: there was about 15 % downlink failure
+	dnmargincpu increased from 75 to 100 in lrr/config/lrr.ini for WIRMAAR
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.6
+Date    : 2016-12-13
+
+Fixed Bugs:
+-----------
+
+ID	: FIX4156
+Desc	: WIRMAAR: fix freeze problem of util_spectral_scan
+	Integration of HAL 3.5.0 to fix util_spectral_scan freezing problem
+
+New Features:
+------------
+
+ID	: NFR590
+Desc	: Custom Hw, Fw, Config and Build versions in addition to LRR versions
+	  Version strings max length set to 32 chars (a-z A-Z 0-9 . - _)
+
+$ROOTACT/lrr/config/lrr.ini
+[versions]
+	hardware_version=${SYSTEM}
+	os_version=
+	hal_version=${HAL_VERSION}
+	custom_build_version=${LRR_VERSION}-${SYSTEM}
+	configuration_version=default
+	custom1_version=
+	custom2_version=
+	custom3_version=
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.5
+Date    : 2016-11-24
+
+New Features:
+------------
+
+ID	: NFR598
+Gateway	: kerlink only
+Design	: 1.5 only
+System	: wirmav2 only
+HAL	: 4.1.0-KLK-RC2 (new) also compile with 4.1.0-SEMTECH-OFFICIAL
+GCC	: arm-2011.03-wirgrid-r79 (new)
+Desc	: Productize LBT
+
++ LBT can be fully configured from LRR/.ini files and from LRC/RFRegtools.
+
+~/lrr/config/lowlvlgw.ini
+
+[lbt]			; listen before talk feature (fpga+sx1272 required)
+	enable=0	; 0|1
+	rssitarget=-80	; threshold to detect if channel is busy or not
+	rssioffset=-4	; offset to apply to SX127x RSSI values
+	scantime=5000	; default scantime if not redefined by channels (us)
+	nbchannel=8	; max channels/frequencies used for LBT
+
+
++ It is possible to redefine [lbt].* keys at custom level.
+
+~/usr/etc/lrr/lowlvlgw.ini or lgw.ini
+
+For each channel it is possible to activate LBT with default scan time value
+or with a specific value:
+
+~/usr/etc/lrr/channels.ini
+
+[channel:1]
+	freqhz=920600000;
+	lbtscantime=128	; overwrite 5000us default value with 128us
+[channel:2]
+	freqhz=920800000;
+	lbtscantime=1	; use 5000us default value (1us is not a valid value)
+[channel:3]
+	freqhz=921000000;
+	lbtscantime=0	; LBT disabled
+
+
++ For compatibility reasons it is possible to define LBT frequencies at custom
+level in lowlvlgw.ini. No more supported in future versions.
+
+~/usr/etc/lrr/lowlvlgw.ini
+
+[lbt/chan_cfg:0]	; here the index is not the logical channel index
+	freq=920600000
+	scantime=128
+[lbt/chan_cfg:1]
+	freq=920800000
+	scantime=5000	; useless as it is the default value
+;[lbt/chan_cfg:2]
+	freq=920800000
+	scantime=1	; result is 5000 (lbt.scantime)
+
++ FPGA firmwares
+
+Unfortunately the LBT feature requires specific FPGA firmware:
+- depending on frequency
+- impacting spectral scan analysis
+
+Even if FPGA firmwares should not be part of LRR deliveries, the package
+contains binaries (FGPA code embedded) to load suitable firmwares.
+
+~/lrr/util_fpga_start/util_fpga_lbt_800 -l
+~/lrr/util_fpga_start/util_fpga_lbt_900 -l
+
+These binaries must be started with "-l" option.
+
+If you want the LRR itself loads the FPGA firmware for LBT set [lbt].enable=2
+This is not the recommended behavior.
+
+Fixed Bugs:
+-----------
+
+ID	: FIX3977
+Desc	: Altitude was always 0 on WIRMAAR, CISCOMS, FOCLOC
+	now NMEA GGA frames are decoded to get altitude
+
+ID	: FIX3983
+Desc	: Add controls in tool used to convert calibration file (WIRMAAR)
+	convjson.py abort if no "rssi_offset" parameter is found.
+	Thus, default values are used instead of "0"
+	Now the calibration file generated is dyncalib.ini.
+	The calid_loraloc.json used is saved in $ROOTACT/usr/etc/lrr
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.4
+Date    : 2016-11-22
+
+New Features:
+------------
+
+ID	: NFR737
+Desc	: Support kerlink nano
+	First step of gateway integration
+	Limitations:
+	- util_spectral_scan failure
+	- strongswan not tested
+	- backup/restore not tested
+
+Fixed Bugs:
+-----------
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.3
+Date    : 
+
+New Features:
+------------
+
+ID	: NFR701
+Desc	: CISCOMS Use rssi_sig instead of rssi_chan for RSSI estimation
+
+Fixed Bugs:
+-----------
+
+ID	: FIX4130
+Desc	: SFTP specific case for WIRMAAR
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.2
+Date    : 2016-11-07
+
+Fixed Bugs:
+-----------
+
+ID	: FIX0000
+Desc	: NFR703: changing downlink frequency can break the duty cycle.
+Now if we find a channel for the downlink frequency, the DTC is computed with
+this channel not with initial one.
+
+ID	: FIX0000
+Desc	: the correct key for antenna configuration is [antenna:X].cableloss
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.1
+Date    : 2016-11-02
+
+New Features:
+-------------
+
+ID	: NFR705
+Desc	: Implement Cisco-tuned TX LUT / RSSI values for Warbler
+Config key: lowlvlgw_ciscoms.ini/[board:0].roomtemp, lowlvlgw_ciscoms.ini/[board:0].ad9361temp,
+	Support Cisco-tuned values for Warbler
+	If EEPROM data is read correctly, the custom file lowlvlgw.ini is created with
+	values: roomtemp, ad9361temp, rssioffset (rfchain 0 and 1) and tx_lut gain (rfchain 0 and 1)
+
+Fixed Bugs:
+-----------
+
+ID      : FIX3951
+Desc    : Add WITH_GPS flag to lrr compilation for fcloc platform (FCLOC)
+	  Configure stty driver to read proper NMEA traces
+
+Notes:
+------
+
+Internal:
+---------
+	Add HAL message to log when radio config returns errors
+	
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.0
+Date    : 2016-10-21
+
+Fixed Bugs:
+-----------
+
+ID	: FIX3955
+Desc	: downgrading lrr package allowed on WIRMAAR
+
+
+New Features:
+-------------
+
+ID	: NFR516
+Desc	: Multiboard support
+Config key: lgw.ini/[chip:x:y].antid, lgw.ini/[rfconf:x:y].txenable
+	Support multiboard and antenna diversity
+	antid param denife the antenna id associated to each SX1301 chip.
+	If rfchain 1 is used, the [rfconf:<board>:1].txenable must be set to 1
+	in order downlink response be sent using the same antenna
+	Both antid and txenable are correctly set by rfregtool.
+	The rfregtool on the lrc must be at least version 1.0.2
+
+
+Notes:
+------
+
+Internal:
+---------
+	
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.0.2
+Date    : 2016-10-12
+
+Fixed Bugs:
+-----------
+
+ID	: FIX3942
+Desc	: filesystem full because of deleted files held open by many process
+
+	all shells started by LRR process inherited opened files. As we use
+	only system(3C) and popen(3C) we can not close files in calling
+	process. So we now close them in "lrr/com/shelllrr.sh:lrr_CloseFiles()"
+	except 0,1,2.
+
+ID	: FIX3930
+Desc	: 100% CPU when openssh with wrong syntax
+	shift option when not regonized
+
+ID	: FIX3815
+Desc	: add a key to disable dnmargin mechanism for all gateway/systems
+[lrr]
+	dnmargin=0	; default 100 so still activated
+
+New Features:
+-------------
+
+ID	: NFR620
+Desc	: Antenna Profile enhancements
+For each antenna configuration now supports a cable lost in dbm.
+The power requested to the board is now:
+	default power +/- channel power - antenna gain + cable lost
+Also add setants and getants builtin commands.
+Config key: custom.ini/[antenna].cablelost
+[antenna:X]
+	gain=G		// in dbm (positive integer value)
+	cablelost=L	// in dbm (positive integer value)
+
+ID	: NFR736
+Desc	: configuration files for ism bands as923 and kr920
+	~/lrr/config/channels_as923.ini
+	~/lrr/config/channels_kr920.ini
+	~/lrr/config/lgw_as923.ini
+	~/lrr/config/lgw_kr920.ini
+Config key : lrr.ini/[ism].band
+
+ID	: NFR622
+Desc	: add setkeys.sh and getkeys built-in shell commands and update iec104
+	messages to refresh fine ts keys sent to LRCs
+
+Notes:
+------
+
+In LoraWAN specifications ISM bands are called CCXXX or CCYYY-ZZZ where:
+	- CC is a country/region code (EU,US,...)
+	- XXX is the "middle" of the band used (EU868,EU433,)
+	- YYY-ZZZ are the min/max of frequencies used (CN779-787)
+
+Sometime both formats are used in the same version of spec for the same ISM or
+have been used in previous versions:
+	- EU868 / EU863-870
+	- US915 / US902-928
+
+The rule for the LRR is to use the short format CCXXX in lowercase (eu868).
+au915 is an execption of AU915-928.
+
+Official ISM band are eu433, eu868, us915, au915, kr920.
+sg920 and tw920 have been included in deliveries for early deployements.
+
+This short name is used by the LRC to know devices behavior and to retrieve the
+RFRegion configuration.
+Of course it is used by the LRR itself to load the correct configuration files
+and LUT tables (on wirmav2 with the closest frequency to 868,915,920).
+
+Internal:
+---------
+ + update sshpass.makefile to remove compilation warnings
+	
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.0.1
+Date    : 2016-10-10
+
+Fixed Bugs:
+-----------
+
+ID	: FIX3830
+Desc	: DL Tx power limitation on Cisco & Multitech 915/923MHz
+
+The maximum default power is now 30dbm for all gateways, except in eu868 if
+the LRR does not detect an FPGA, in this case the power is limited to 20dbm.
+The LRR try to detect FPGA only on WIRMAV2 gateway.
+
+ID	: FIX3815
+Desc	: Random DL packet drops by the LRR for multitech gateway
+when round trip is good we have a margin to reply to device. If the margin is
+greater than dnmargin, we replace the packet in a wait queue.
+	dnmargin=150	; default=100 , 0 to disable the feature
+But put in/pull out the packet in the wait queue has cpu cost, this time must
+be considered before presenting the packet to the board.
+	dnmargincpu=100	; default=75
+Config key	: lrr.ini [<system>].dnmargin [<system>].dnmargincpu
+
+ID	: FIX3810
+Desc	: RX2 channel identification issue
+	(LRR now reports flag RX2 in sent indication when channel is changed)
+
+ID	: FIX3323
+Desc	: LRR queue usage reporting (current and max)
+
+ID	: FIX0000
+Desc	: powermax=30 should not be present in config/lowlvlgw_wirmav2.ini
+	(otherwise autodetection of hardware 20db vs 27db is broken)
+
+ID      : FIX3757
+Desc    : Set support password without the klk_set_passwd command (WIRMAAR)
+
+ID      : FIX3780
+Desc    : Add filesystem /.update in lrr.ini for monitoring (WIRMAAR)
+
+
+New Features:
+-------------
+
+ID	: NFR703
+Desc	: downlink frequencies can be changed dynamicaly by the LRC.
+
+ID	: NFR684
+Desc	: prepare to LRR ID format and length
+
+Just return the full MAC address and the PP prefix
+
+ID      : NFR682
+Desc    : dnconfig.sh: new option [-H s<s>_a<a>_b<b>]
+	When this option is used, download a file named
+	cfglrr-<rfregionid>-CONF_s<s>_a<a>_b<b>_v<v>.tar.gz instead of
+	cfglrr-<rfregionid>.tar.gz
+
+Internal:
+---------
+
++ branch 2.0 for TP4.x
++ merge LRR sources for HAL array and HAL standard (3.2)
++ main target for radio design 1 and 1.5 is still wirmav2:
+	=> util_rssi_histogram and util_spectral_scan sources are for this
+	target
++ use rtbase 1.4.0 with xlap/iec104/apci embedded 
+	=> xlap.c no longer compiled
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 1.8.23
+Date    : 2016-09-12
+
+Fixed Bugs:
+-----------
+ID	: FIX3706
+Desc	: clear xlap output messages queue on disconnect
+
+ID	: FIX3706
+Desc	: workaround disconnection lrr/lrc when executing CLI commands
+	activate a trace that seems to limit/prevent the disconnections
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 1.8.22
+Date    : 2016-09-09
+
+Fixed Bugs:
+-----------
+ID	: FIX0000
+Desc	: load 32 entries for LUT table instead of 16, in order to reach full
+	power capacity in downlink
+
+ID	: FIX0000
+Desc	: set default powermax to 30 instead of 20 for WIRMAAR and CISCOMS
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 1.8.21
+Date    : 2016-09-08
+
+Fixed Bugs:
+-----------
+
+ID      : FIX0000
+Desc    : CISCOMS: Fix permissions for support account and suplog execution
+
+ID      : FIX0000
+Desc    : CISCOMS: Improve suplog compatibility
+
+ID      : FIX0000
+Desc    : CISCOMS: Automatic recall of sysconfiglrr.sh after upgrade
+
+
+New Features:
+-------------
+
+	None
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 1.8.20
+Date    : 2016-09-08
+
+Fixed Bugs:
+-----------
+
+ID      : FIX0000
+Desc    : WIRMAAR: Improvement of tool convjson.py that generate lowlgv.ini
+	from calibration file
+
+
+ID      : FIX3681
+Desc    : rfscanv1 failure on WIRMAAR, corrected
+
+New Features:
+-------------
+
+	None
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 1.8.19
+Date    : 2016-09-07
+
+Important Notes:
+---------------
+
+	After upgrading to this version, you need to execute script
+	lrr/com/sysconfiglrr.sh in order to apply FIX3662 (support account
+	creation)
+
+
+Fixed Bugs:
+-----------
+
+ID      : FIX3662
+Desc    : Create support account for CISCOMS
+
+
+ID      : FIX0000
+Desc    : fix integers size when reading and configuring Tx LUT
+
+New Features:
+-------------
+
+	None
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 1.8.18
+Date    : 2016-08-30
+
+Fixed Bugs:
+-----------
+
+ID      : FIX0000
+Desc    : set support user password for WIRMAAR
+
+ID      : FIX3532
+Desc    : suplog now works correctly for WIRMAAR
+
+New Features:
+-------------
+
+	None
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 1.8.17
+Date    : 2016-08-25
+
+Fixed Bugs:
+-----------
+
+ID      : FIX0000
+Desc    : Compile against a modified version of the Semtech HAL, 
+          which set rx_freq_max to 927.8 MHz for US915 band,
+          instead of 914.2 MHz
+
+    An official updated version of the Semtech HAL is required to fix this problem
+
+New Features:
+-------------
+
+    None
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 1.8.16
+Date    : 2016-08-23
+
+Fixed Bugs:
+-----------
+
+ID      : FIX3610
+Desc    : fix rf scan on CISCOMS (command script from LRC)
+
+
+New Features:
+-------------
+
+ID      : NFR000
+Desc    : CISCOMS: Use EEPROM data to calibrate LUT tables
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 1.8.15
+Date    : 2016-08-05
+
+Fixed Bugs:
+-----------
+
+    None
+
+New Features:
+-------------
+
+ID      : NFR000
+Desc    : CISCOMS: Revert back to serial GPS device /dev/ttyS1 instead of direct I2C device /dev/gps
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 1.8.14
+Date    : 2016-08-04
+
+Fixed Bugs:
+-----------
+
+    None
+
+New Features:
+-------------
+
+ID      : NFR000
+Desc    : CISCOMS: Support LoRa Gateway Localization HAL v3.4.1 provided by Cisco release 1.1.1
+Config key: lgw*.ini        [board:N] band
+
+    [board:0]
+    ; band=1    European 868 MHz
+    ; band=2    US 915 MHz
+        band=1
+        
+ID      : NFR417
+Desc    : CISCOMS/WIRMAAR: configure default account for FTP upload and use SFTP instead of FTP
+Config key: [support:N] ftpaddr ftpuser ftppass ftpport use_sftp
+
+    [support:0]
+    ;   ftp parameters
+        ftpaddr=[abf6ca9fbd3a2bb08bdbd7c7e47caa50225fd0dec6ffa1504c2769bc97a0facd]
+        ftpaddr_crypted_k=0
+        ftpuser=[df09087afa773c3dde7994ee50ab0ad9]
+        ftpuser_crypted_k=0
+        ftppass=[ed37881434753d194bbe66a8bc2de5ba]
+        ftppass_crypted_k=0
+        ftpport=[2ab6268fa568f91eaa80c4e531aabe80]
+        ftpport_crypted_k=0
+        use_sftp=0
+    
+    [support:1]     
+    ;   ftp parameters
+        ftpaddr=[58ba93ec55edaf7b8d43c8fb34bc96652abf5db92b0b675a405ad3abf93289d2]
+        ftpaddr_crypted_k=0
+        ftpuser=[df09087afa773c3dde7994ee50ab0ad9]
+        ftpuser_crypted_k=0
+        ftppass=[ed37881434753d194bbe66a8bc2de5ba]
+        ftppass_crypted_k=0
+        ftpport=[2ab6268fa568f91eaa80c4e531aabe80]
+        ftpport_crypted_k=0
+        use_sftp=0
+
+
+    Warning:
+        - if a sftp binary command is found on the system, it is used
+        prior to the binay sftp delivered with LRR package.
+
+
+Note:
+----
+    Due to internal mistake, this version has been previously released as
+    1.8.13-ciscoms on 2016-08-04 and did not include the changes made by 
+    the previous 1.8.13 (2016-07-22).
+
+    The current one 1.8.14 does.
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 1.8.13
+Date    : 2016-07-22
+
+Fixed Bugs:
+-----------
+
+    None
+
+New Features:
+-------------
+
+ID  : INT0000
+Desc    : HAL 4.0.0 with LBT
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 1.8.12
+Date    : 2016-07-19
+
+Fixed Bugs:
+-----------
+
+ID  : FIX3477
+Desc    : fix radioparams command problem on WIRMAAR/CISCOMS
+
+ID  : FIX3475
+Desc    : fix radiostop/radiostart problem on WIRMAAR/CISCOMS
+
+    A correction in HAL is also required to fix this problem
+
+ID  : FIX3478
+Desc    : do not report space disk usage for '/' partition on WIRMAAR
+
+ID  : FIX3482
+Desc    : add commands iptableson/off on WIRMAAR
+
+New Features:
+-------------
+
+    None
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 1.8.11
+Date    : 2016-07-19
+
+Fixed Bugs:
+-----------
+
+ID      : FIX0000
+Desc    : Fix radio stop procedure
+
+ID      : FIX0000
+Desc    : Kill all sshpass.x children processes when closing a reverse SSH session
+
+New Features:
+-------------
+
+ID      : NFR417
+Desc    : configure default account for FTP download and use SFTP instead of FTP
+Comment : Feature now available for Cisco Warbler modem, using the system's default sftp binary
+
+ID      : INT000
+Desc    : CISCOMS: Use GPS as I2C device /dev/gps
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 1.8.12
+Date    : 2016-07-19
+
+Fixed Bugs:
+-----------
+
+ID  : FIX3477
+Desc    : fix radioparams command problem on WIRMAAR/CISCOMS
+
+ID  : FIX3475
+Desc    : fix radiostop/radiostart problem on WIRMAAR/CISCOMS
+
+    A correction in HAL is also required to fix this problem
+
+ID  : FIX3478
+Desc    : do not report space disk usage for '/' partition on WIRMAAR
+
+ID  : FIX3482
+Desc    : add commands iptableson/off on WIRMAAR
+
+New Features:
+-------------
+
+    None
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 1.8.11
+Date    : 2016-07-08
+
+Fixed Bugs:
+-----------
+
+New Features:
+-------------
+
+ID  : INT000
+Desc    : Report many features on WIRMAMS
+
+    see below to know the whole list
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 1.8.10
+Date    : 2016-06-16
+
+Fixed Bugs:
+-----------
+
+New Features:
+-------------
+
+ID  : NFR417
+Desc    : configure default account for FTP download and use SFTP instead of FTP
+Config key: [download:0] ftpaddr ftpuser ftppass ftpport use_sftp
+
+    [download:0]
+    ;   ftpaddr=[...]           ; default is [laplrc:0].addr
+    ;   ftpaddr_crypted_k=0
+        ftpuser=[df09087afa773c3dde7994ee50ab0ad9]  ; ftp
+        ftpuser_crypted_k=0
+        ftppass=[ed37881434753d194bbe66a8bc2de5ba]  ; <empty>
+        ftppass_crypted_k=0
+        ftpport=[2ab6268fa568f91eaa80c4e531aabe80]  ; 21
+        ftpport_crypted_k=0
+        use_sftp=0
+
+    Warning:
+        - available only on kerlink/wirmav2
+        - if a sftp binary command is found on the system, it is used
+        prior to the binay sftp delivered with LRR package.
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 1.8.9
+Date    : 2016-06-01
+
+Fixed Bugs:
+-----------
+
+ID  : FIX3189
+Desc    : power calibration on wirmav2/30dbm/9xx Mhz digital gain is 3 not 0
+
+    used by us915 and au915
+
+    [lut/915/30/1257]
+    idx =   power   pa  mix dig dac
+    0   =   2   1   8   3   3
+    1   =   4   1   9   3   3
+    2   =   6   1   10  3   3
+    3   =   8   1   11  3   3
+    4   =   10  2   8   3   3
+    5   =   12  2   9   3   3
+    6   =   14  2   10  3   3
+    7   =   17  2   11  3   3
+    8   =   18  2   12  3   3
+    9   =   19  3   8   3   3
+    10  =   21  3   9   3   3
+    11  =   23  3   10  3   3
+    12  =   25  3   11  3   3
+    13  =   26  3   12  3   3
+    14  =   28  3   13  3   3
+    15  =   29  3   15  3   3
+
+    used by sg920
+
+    [lut/920/30/1257]
+    idx =   power   pa  mix dig dac
+    0   =   2   1   8   3   3
+    1   =   4   1   9   3   3
+    2   =   6   1   10  3   3
+    3   =   8   1   11  3   3
+    4   =   10  2   8   3   3
+    5   =   12  2   9   3   3
+    6   =   14  2   10  3   3
+    7   =   17  2   11  3   3
+    8   =   18  2   12  3   3
+    9   =   19  3   8   3   3
+    10  =   21  3   9   3   3
+    11  =   23  3   10  3   3
+    12  =   25  3   11  3   3
+    13  =   26  3   12  3   3
+    14  =   28  3   13  3   3
+    15  =   29  3   15  3   3
+
+ID  : FIX3184
+Desc    : LRR queuing : the message store queue is only processed when both
+LRC are connected again
+
+ID  : FIX3181
+Desc    : LRR/LRC support of the AU915 ISM Band (Australia)
+
+    see NFR602
+
+ID  : FIX3180
+Desc    : Default timeout to send a DL must be 60 seconds (NFR329/Class C)
+
+ID  : FIX3104
+Desc    : power calibration on wirmav2/30dbm/868 now digital gain is 3 not 0
+
+ID  : FIX3098
+Desc    : gpslocation command now returns MODE= instead of LOC=
+
+ID  : FIX3147
+Desc    : gpsman & gpsmanreset reduce restart LRR to 5s (instead of 15)
+
+New Features:
+-------------
+
+ID  : NFR602
+Desc    : ism band au915 au915h8
+Config key: ism.band, ism.bandalter
+
+    [ism]
+        band=au915
+        bandalter=au915h8   ; listen 8 first channels of au915
+        asymdownlink=1      ; default value for au915
+        asymdownlinkmodulo=8    ; default value for au915
+
+    Summary:
+    upstream LC0  .. LC63 [0..63] [915200000..927800000] +200000 BW_125KHZ
+    upstream LC64 .. LC71 [64.71] [915900000..927100000] +1600000 BW_500KHZ
+    dnstream LCd0..LCd7 [127..134] [923300000..927500000] +600000 BW_500KHZ
+    RX2: 923.3 SF12(DR8)
+
+ID  : NFR595
+Desc    : Multicast Workaround for Class C Device
+
+ID  : NFR571
+Desc    : IEC104 timers configuration: values up to 2^32 are now accepted
+Config key: [laplrc:X].iec104t1,iec104t2,iec104t3
+
+ID  : NFR000
+Desc    : asymetric down link logical channel choice
+Config key: ism.asymdownlink, ism.asymdownlinkmodulo, ism.asymdownlinkoffset
+
+    uplink channels are numbered from 0 to 126, downlink from 127 to 255
+    when asymetric mode is used by default (ie for us915) or forced by 
+    setting ism.asymdownlink=1, the choice of the the downlink channel
+    was:
+        dnchan  = (upchan % 8) + 127
+    now it is:
+        dnchan  = (upchan%asymdownlinkmodulo) + 127 + asymdownlinkoffset
+
+ID  : NFR000
+Desc    : Look up table selection for power calibration (LUT)
+Config key: ism.band,ism.freq
+
+    For a given Ism band (eu868,us915,sg920,au915) the default lut used for
+    power calibration is:
+
+    [lut/XXX/PM/12XX] where:
+        + XXX is the frequency derived from the ism band name or the
+        value set with ism.freq (new)
+        + PM is the power max for the gateway (20 or 30).
+        + 12XX is the type of the SX12 used on radio board (1257)
+
+    It is always possible to create a new lut in ~/usr/etc/lrr/lowlvlgw.ini 
+    and in this case just name it [lut].
+
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 1.6.13
+Date    : 2016-06-21
+
+Fixed Bugs:
+-----------
+
+    None
+
+New Features:
+-------------
+
+ID  : INT000
+Desc    : CISCOMS: aeskey parameter moved
+Config key: custom.ini:[board:x].aeskey
+
+    aeskey parameter must now be configured in custom.ini file, section
+    [board:x] where 'x' is the board number
+
+    example of custom.ini file:
+        [board:0]
+            aeskey=ABCDEF1234567890ABCDEF1234567890
+
+ID  : INT000
+Desc    : CISCOMS: upgrade.sh now support .cpkg file
+
+ID  : INT000
+Desc    : CISCOMS: add lgwx8_tw920.ini and correct lgwx8_sg920.ini
+
+ID  : INT000
+Desc    : CISCOMS: util_spectral_scan tool added
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 1.6.12
+Date    : 2016-06-10
+
+Fixed Bugs:
+-----------
+
+ID  : FIX0000
+Desc    : WIRMAAR: upgrade failed to download .ipk files
+
+New Features:
+-------------
+
+ID  : INT000
+Desc    : WIRMAAR: Support last HAL lora_gateway_v2_v3.3.0-klk1.tar.gz
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 1.6.11
+Date    : 2016-05-24
+
+Fixed Bugs:
+-----------
+
+    None
+
+New Features:
+-------------
+
+ID  : INT000
+Desc    : CISCOMS: Support HAL 1.0.1
+
+ID  : INT000
+Desc    : CISCOMS: Support GPS
+Config key: lrr.ini:[lrr].usegpsposition, lrr.ini:[lrr].usegpstime
+
+ID  : INT000
+Desc    : CISCOMS: Calculate lrrid from Cisco S/N
+
+ID  : INT000
+Desc    : CISCOMS: Display fine timestamps
+Config key: lgw.ini:[gen].aeskey, lrr.ini:[lrr].usegpstime
+
+    If parameters usegpstime=1 and aeskey set to the correct key specific to the gateway
+    the fine timestamps will be displayed in TRACE.log file
+
+    Example of configuration
+    lrr.ini:
+        [lrr]
+            usegpstime=1
+
+    lgw.ini:
+        [gen]
+            aeskey=ABCDEF1234567890ABCDEF1234567890
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 1.8.7
+Date    : 2016-04-28
+
+New Features:
+-------------
+
+ID  : NFR000
+Desc    : default configuration for EU868
+Config key: ism.band ism.bandalter
+    When ism.band == "eu868", the default value for ism.bandalter is now
+    "eu868_2015" instead of "eu868". The main consequence is that logical
+    channels definition is now based on "channels_eu868_2015.ini" instead
+    of "channels_eu868.ini".
+    So default frequencies are:
+    - 1:868.1 2:868.3 3:868.5 4:867.1 5:867.3 6:867.5 7:867.7 8:867.9
+    868.525 is only used for rx2 (sf9)
+    instead of
+    - 1:868.1 2:868.3 3:868.5 4:868.85 5:869.05 6:868.525 
+    868.525 is also used for rx2 (sf9)
+
+ID  : NFR321
+Desc    : buffering capabilities to prevent packet loss
+Config key:
+
+    [uplinkstorage]
+    pktcount=30000  ; #packets in store queue (one packet is near 300B)
+    memused=50  ; no storage if memory used is greater then 50%
+    rstrpersec=10   ; max restore per sec
+    ctrloutq=10 ; packets limit in IEC output queue to restore a packet
+    ctrlackq=5  ; packets limit in IEC ack queue to restore a packet
+
+    + limitation: possible values for rstrpersec are 10,5,3,2,1
+    + limitation: packets are stored in RAM, all packets are lost in case
+    of restart, reboot, crash ...
+    + limitation: the max number of packets stored is obviously less than
+    5 million on commun plateform
+    + known bug: in case of TCP disc packets in IEC ack queue are still
+    lost
+
+ID  : NFR326
+Desc    : LRR uplink/downlink dutycycle per antenna/channel/subband on last hour
+Config key: none
+
+    + add "dtc" remote command to get the LRR dutycycle
+
+    ant=0 chan=001 up=0.001287 dn=0.001145
+    ant=0 chan=003 up=0.006286 dn=0.003435
+    ant=0 chan=006 up=0.002283 dn=0.000000
+    ant=0 chan=127 up=0.000000 dn=0.009159
+    ant=0 subb=001 up=0.007573 dn=0.004580
+    ant=0 subb=002 up=0.002283 dn=0.000000
+    ant=0 subb=003 up=0.000000 dn=0.009159
+
+    + DTC are returned in each uplink radio packet and in each sent
+    indication packet for the concerned antenna/channel/subband triplet
+
+    + when the LRR is (re)connected to the LRC all DTC infos are returned
+
+
+ID  : NFR329
+Desc    : Sent indicator for downlink frame
+Config key: none
+
+ID  : NFR358
+Desc    : LRC/LRR payload uplink and downlink size limitation
+Config key: none
+
+    The limitation is now 256B
+
+ID  : NFR464
+Desc    : Radio frequency region
+Config key:
+
+    + add an option to "dnconfig" remote command to precise that the 
+    configuration concerns a RF region:
+
+    dnconfig -C <region_id> -T <config_type>
+    dnconfig -C RF_EU868_2015 -T rfregion
+
+    if <config_type> == "rfregion" the radio is restarted
+
+
+    + add "rfregion" remote command to get RF region info:
+
+    rfregion
+    <<
+    ID=RF_EU868_2015
+    VERSION=10
+    ISM=eu868
+    ISMALTER=eu868_2015
+    >>
+
+Fixed Bugs:
+-----------
+
+ID  : FIX0000
+Desc    : erroneous sample with util_rssi_histogram
+
+    The first sample of the capture is incorrect and dropped
+
+ID  : FIX0000
+Desc    : erroneous LORABOARD_TYPE from get_version command
+
+    + on wirmav2 the detection of the hardware was based on variable
+    LORABOARD_TYPE="868-27dBm" from file "/tmp/loraboard_version". It seems
+    that some versions of kerlink set LORABOARD_TYPE="868-FPGA".
+    Now both strings are supported.
+
+
+ID  : FIX2433
+Desc    : NFR386: Configuration files encryption
+Config key: all keys from lrr.ini gpsman.ini custom.ini
+
+    all keys from lrr.ini gpsman.ini custom.ini can be encrypted now
+
+
+ID  : FIX2739
+Desc    : default power 16
+Config key: gen.power
+
+
+ID  : FIX2964
+Desc    : SF for RX2 in downlink packets overwrites default SF for RX2 when
+LRR decides to use RX2 because it is too late for RX1.
+
+
+ID  : FIX3007
+Desc    : power max limitation and antenna gain
+
+ The power max requested to the radio board is now controlled after the antenna
+ gain correction. 
+ The limit is 20dbm on all base stations except on 
+    - kerlink/wirmav2 for which it is 30dbm if FPGA is detected at runtime
+    - kerlink/wirmams for which it is 30dbm we assume FPGA is always present

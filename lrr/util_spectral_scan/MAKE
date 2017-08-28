@@ -1,0 +1,139 @@
+#!/bin/bash
+# vim: ft=sh: set noet ts=4 sw=4:
+
+if [ -z "$ROOTACT" ]
+then
+	Error "ROOTACT not specified"
+	exit 1
+fi
+
+. $ROOTACT/rtbase/base/system
+
+case	$SYSTEM	in
+	wirmav2)
+#		LGW_PATH=$ROOTACT/lora_gateway_spi_x1/libloragw
+#		export LGW_PATH
+#		CROSS_COMPILE=arm-none-linux-gnueabi-
+#		export CROSS_COMPILE
+#		make $*
+		file="$ROOTACT/lora_gateway_spi_x1/util_spectral_scan/util_spectral_scan"
+		if [ -f "$file" ]
+		then
+			echo "Compilation disabled, copying the file from lora_gateway"
+			cp $file util_spectral_scan
+		else
+			echo "Can not found [$file]"
+		fi
+	;;
+	wirmams)
+		file="$ROOTACT/lora_gateway/util_spectral_scan/util_spectral_scan"
+		if [ -f "$file" ]
+		then
+			echo "Compilation disabled, copying the file from lora_gateway"
+			cp $file .
+		else
+			echo "Can not found [$file]"
+		fi
+	;;
+	wirmaar)
+		file="$ROOTACT/lora_gateway/util_spectral_scan/spectral_scan"
+		if [ -f "$file" ]
+		then
+			echo "Compilation disabled, copying the file from lora_gateway"
+			cp $file util_spectral_scan
+		else
+			echo "Can not found [$file]"
+		fi
+	;;
+	wirmana)
+		file="$ROOTACT/lora_gateway_spi_x1/util_spectral_scan/util_spectral_scan"
+		if [ -f "$file" ]
+		then
+			echo "Compilation disabled, copying the file from lora_gateway"
+			cp $file util_spectral_scan
+		else
+			echo "Can not found [$file]"
+		fi
+	;;
+	ciscoms)
+		file="$ROOTACT/lora_gateway/util_spectral_scan/spectral_scan"
+		if [ -f "$file" ]
+		then
+			echo "Compilation disabled, copying the file from lora_gateway"
+			cp $file util_spectral_scan
+		else
+			echo "Can not found [$file]"
+		fi
+	;;
+	fcloc)
+		file="$ROOTACT/lora_gateway/util_spectral_scan/spectral_scan"
+		if [ -f "$file" ]
+		then
+			echo "Compilation disabled, copying the file from lora_gateway"
+			cp $file util_spectral_scan
+		else
+			echo "Can not found [$file]"
+		fi
+	;;
+	fcmlb)
+		file="$ROOTACT/lora_gateway/util_spectral_scan/util_spectral_scan"
+		if [ -f "$file" ]
+		then
+			echo "Compilation disabled, copying the file from lora_gateway"
+			cp $file util_spectral_scan
+		else
+			echo "Can not found [$file]"
+		fi
+	;;
+	fcloc)
+		# Since HAL 4.1.3, the filename is "spectral_scan"
+		file="$ROOTACT/lora_gateway/util_spectral_scan/spectral_scan"
+		if [ -f "$file" ]
+		then
+			echo "Compilation disabled, copying the file from lora_gateway"
+			cp $file util_spectral_scan
+		else
+			echo "Can not found [$file]"
+		fi
+	;;
+	fcpico)
+		file="$ROOTACT/lora_gateway_spi_x1/util_spectral_scan/util_spectral_scan"
+		if [ -f "$file" ]
+		then
+			echo "Compilation disabled, copying the file from lora_gateway"
+			cp $file util_spectral_scan
+		else
+			echo "Can not found [$file]"
+		fi
+	;;
+	tektelic)
+		[ ! -d "./obj" ] && mkdir ./obj
+		make -f Makefile.tektelic $*
+	;;
+	gemtek)
+		file="$ROOTACT/lora_gateway_spi_x1/util_spectral_scan/util_spectral_scan"
+		if [ -f "$file" ]
+		then
+			echo "Compilation disabled, copying the file from lora_gateway"
+			cp $file util_spectral_scan
+		else
+			echo "Can not found [$file]"
+		fi
+	;;
+	mtcap|mtac_v1.5)
+		file="$ROOTACT/lora_gateway/util_spectral_scan/util_spectral_scan"
+		if [ -f "$file" ]
+		then
+			echo "Compilation disabled, copying the file from lora_gateway"
+			cp $file util_spectral_scan
+		else
+			echo "Can not found [$file]"
+		fi
+	;;
+	fclamp|mtac_v1.0|mtac_usb_v1.0|natrbpi)
+		echo    "Can't compile this module on $SYSTEM as there is no sx1272 with FPGA in GW 1.0"
+	;;
+	*)
+		echo	"Do not know how to compile this module on $SYSTEM"
+	;;
+esac

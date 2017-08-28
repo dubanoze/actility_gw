@@ -1,0 +1,26 @@
+#!/bin/bash
+
+[ "$1" = "clean" ] && exit 0
+
+if [ -z "$ROOTACT" ]
+then
+        Error "ROOTACT not specified"
+        exit 1
+fi
+
+. $ROOTACT/rtbase/base/system
+
+file="$ROOTACT/bin/sftp"
+if [ -f "$file" ]
+then
+	echo "Copying sftp file '$file'"
+	cp $file .
+else
+	# Full OpenSSH and SFTP are available for ciscoms
+	[ "$SYSTEM" = "ciscoms" ] && echo "patched sftp is not required for ${SYSTEM} since full OpenSSH is already available on this platform" && exit 0
+	[ "$SYSTEM" = "gemtek" ] && echo "Compilation disable as openssh & sftp are already availble on ${SYSTEM} platform" && exit 0
+
+	echo "Can not found '$file'"
+	echo "Please install and compile openssh for this environment"
+	echo "Use a commande like this one: LD=\"arm-poky-linux-gnueabi-gcc -march=armv7-a -marm -mfloat-abi=hard -mfpu=neon -mtune=cortex-a9 --sysroot=\$SDKTARGETROOT\" ./configure --prefix=/usr --host=arm-poky-linux-gnueabi"
+fi

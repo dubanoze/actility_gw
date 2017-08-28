@@ -1,0 +1,42 @@
+### Environment constants 
+include $(ROOTACT)/rtbase/base/makefile.def
+include $(ROOTACT)/lrr/base/makefile.def
+
+
+CFLAGS += -DWITH_SPI -DWITH_SX1301_X8 -DLP_MODULE_LRR
+
+SEMTECH=lora_gateway/libsx1301ar
+LIBSEMTECH=$(ROOTACT)/$(SEMTECH)/libsx1301ar.a
+INCSEMTECH=$(ROOTACT)/$(SEMTECH)/inc
+
+LIB=\
+	$(LIBSEMTECH)\
+	$(LIBBASE)
+
+INC=-I../include -I../../include -I$(ROOTACT) -I$(ROOTACT)/include -I$(INCSEMTECH)
+
+MYLDFLAGS=-lm -lrt -lcrypto
+
+
+
+CFLAGS += -DWITH_GPS
+INC += -I$(SDK)/kona64/usr/include
+
+### General build targets
+
+all: util_spectral_scan
+
+clean:
+	rm -f obj/*.o
+	rm -f util_spectral_scan
+
+
+### Main program compilation and assembly
+
+obj/util_spectral_scan.o: src.tektelic/util_spectral_scan.c
+	$(CC) -c $(CFLAGS) $< -o $@ -I $(INCSEMTECH)
+
+util_spectral_scan: obj/util_spectral_scan.o 
+	$(CC) $^ -lrt $(STATIC) $(LDFLAGS) -o $@ $(MYLDFLAGS) $(LIB) $(THREADLD)
+
+### EOF

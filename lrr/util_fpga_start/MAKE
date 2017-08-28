@@ -1,0 +1,31 @@
+if [ -z "$ROOTACT" ]
+then
+        Error "ROOTACT not specified"
+        exit 1
+fi
+
+. $ROOTACT/rtbase/base/system
+
+case	$SYSTEM	in
+	wirmav2)
+	file="$ROOTACT/lora_gateway_spi_x1/util_fpga_start/util_fpga_lbt_800"
+	if [ -f "$file" ]
+	then
+		echo "Compilation disabled, copying the file from lora_gateway"
+		cp $file .
+	else
+		echo "Can not found [$file]"
+	fi
+	file="$ROOTACT/lora_gateway_spi_x1/util_fpga_start/util_fpga_lbt_900"
+	if [ -f "$file" ]
+	then
+		echo "Compilation disabled, copying the file from lora_gateway"
+		cp $file .
+	else
+		echo "Can not found [$file]"
+	fi
+	;;
+	*)
+		echo	"Do not know how to compile this module on $SYSTEM"
+	;;
+esac

@@ -1,0 +1,12 @@
+#!/bin/sh
+
+#echo "before remove ($*)"
+INITLRR=/mnt/apps/etc/init.d/S06initlrr
+
+if [ -f "$INITLRR" ]
+then
+	$INITLRR stop
+	sleep 1
+	echo "remove $INITLRR"
+	rm $INITLRR
+fi

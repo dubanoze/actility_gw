@@ -1,0 +1,77 @@
+#!/bin/bash
+# vim: ft=sh: set noet ts=8 sw=8:
+
+if [ -z "$ROOTACT" ]
+then
+        Error "ROOTACT not specified"
+        exit 1
+fi
+
+. $ROOTACT/rtbase/base/system
+
+make -f makefile.launcher $*
+make -f makefile.sshpass $*
+make -f makefile.keys $*
+
+[ -z $BUILD_MODE ] && BUILD_MODE=release
+[ "$BUILD_MODE" = "debug" ] && echo "!!!!!!!! DEBUG BUILD !!!!!!!!"
+
+case	$SYSTEM	in
+	wirmav2)
+		make -C exe_spi_x1 $* ARCH_COMM=spi ARCH_RADIO=SX1301_X1 
+	;;
+	wirmana)
+		make -C exe_spi_x1 $* ARCH_COMM=spi ARCH_RADIO=SX1301_X1 
+	;;
+	wirmams)
+		make -C exe_spi_ms $* ARCH_COMM=spi ARCH_RADIO=SX1301_X1 
+	;;
+	wirmaar)
+		make -C exe_spi_x8 $* ARCH_COMM=spi ARCH_RADIO=SX1301_X8 
+	;;
+	natrbpi)
+		make -C exe_usb_x1 $* ARCH_COMM=usb ARCH_RADIO=SX1301_X1 
+	;;
+	ir910)
+		make -C exe_usb_x1 $* ARCH_COMM=usb ARCH_RADIO=SX1301_X1 
+	;;
+	ciscoms)
+		make -C exe_spi_x8 $* ARCH_COMM=spi ARCH_RADIO=SX1301_X8 BUILD_MODE=$BUILD_MODE
+	;;
+	tektelic)
+		make -C exe_spi_x8 $* ARCH_COMM=spi ARCH_RADIO=SX1301_X8
+	;;
+        fcmlb)
+                make -C exe_spi_x1 $* ARCH_COMM=spi ARCH_RADIO=SX1301_X1 BUILD_MODE=$BUILD_MODE
+        ;;
+        fcpico|fclamp)
+                make -C exe_spi_x1 $* ARCH_COMM=spi ARCH_RADIO=SX1301_X1 BUILD_MODE=$BUILD_MODE
+        ;;
+	fcloc)
+		make -C exe_spi_x8 $* ARCH_COMM=spi ARCH_RADIO=SX1301_X8 BUILD_MODE=$BUILD_MODE
+	;;
+        mtac_usb_v1.0)
+                make -C exe_usb_x1 $* ARCH_COMM=usb ARCH_RADIO=SX1301_X1
+        ;;
+        mtac_v1.0|mtac_v1.5)
+                make -C exe_spi_x1 $* ARCH_COMM=spi ARCH_RADIO=SX1301_X1
+        ;;
+        rfilr)
+                make -C exe_usb_x1 $* ARCH_COMM=usb ARCH_RADIO=SX1301_X1
+        ;;
+        oielec)
+                make -C exe_spi_x1 $* ARCH_COMM=spi ARCH_RADIO=SX1301_X1
+	;;
+	gemtek)
+		make -C exe_spi_x1 $* ARCH_COMM=spi ARCH_RADIO=SX1301_X1  
+        ;;
+        mtcap)
+                make -C exe_spi_x1 $* ARCH_COMM=spi ARCH_RADIO=SX1301_X1
+        ;;
+        linux-x86)
+                make -C exe_tty_x1 $* ARCH_COMM=tty ARCH_RADIO=SX1301_X1
+        ;;
+	*)
+		echo	"unknown system $SYSTEM"
+	;;
+esac

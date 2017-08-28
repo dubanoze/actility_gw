@@ -1,0 +1,79 @@
+
+General rules:
+-------------
+
+Drop everything in INPUT for ipv4 & ipv6
+
+Accept everything on localhost interface
+
+#Accept DHCP protocol on all interfaces
+
+#Accept NTP protocol on all interfaces
+
+Accept ICMP protocol on all interfaces from some "local" networks:
+	192.168.0.0/16
+	10.10.0.0/16
+
+Accept SSH input connections on all interfaces from some "local" networks:
+	192.168.0.0/16
+	10.10.0.0/16
+
+Accept incoming trafic for ESTABLISHED or RELATED connexions
+
+DHCP and NTP are noted (#), it seems that some implementations/versions of
+iptables are not uptodate and do not manage RELATED ... 
+It works fine with Kerlink (ie rules are not necessary).
+
+Main features to test with these rules:
+--------------------------------------
+
+IEC104 connexions LRR -> LRC			: PASSED
+
+LRR software upgrade (wget FTP port 21)		: PASSED
+
+Reverse SSH (port 22)				: PASSED
+
+SSH from "local" networks			: PASSED
+
+Rules selection:
+---------------
+
+iptables commands are search in this order (only one shell is executed):
+	- custom rules specific to a LRR
+	$ROOTACT/usr/etc/lrr/iptables.sh
+	- package rules (upgraded as LRR upgrade)
+	$ROOTACT/lrr/com/shells/${SYSTEM}/iptables.sh
+	$ROOTACT/lrr/com/shells/iptables.sh
+	- default rules (installed once)
+	/etc/init.d/firewall
+
+Location of the shell finaly used is traced in ~/var/log/lrr/iptablesfrom.log
+
+It is possible to activate/deactivate rules from LRC CLI.
+
+The rules are activated at boot time (run level 3)
+
+Rules details:
+-------------
+
+  #DROP everything in INPUT (Let everything going out)
+  iptables -P INPUT DROP
+  ip6tables -P INPUT DROP
+
+  #Allow everything on localhost interface
+  iptables -A INPUT -i lo -j ACCEPT
+
+  #Allow DHCP protocol on all interfaces
+  #iptables -A INPUT -p udp --dport 67:68 --sport 67:68 -j ACCEPT
+
+  #Allow ICMP output (ping requests) on all interfaces
+  iptables -A INPUT -p icmp --source 192.168.0.0/16 -j ACCEPT
+  iptables -A INPUT -p icmp --source 10.10.0.0/16 -j ACCEPT
+
+  #allow NTP
+  #iptables -A INPUT -p udp --dport 123 --sport 123 -j ACCEPT
+
+  iptables -A INPUT -p tcp --dport 22 --source 192.168.0.0/16 -j ACCEPT
+  iptables -A INPUT -p tcp --dport 22 --source 10.10.0.0/16 -j ACCEPT
+
+  iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT

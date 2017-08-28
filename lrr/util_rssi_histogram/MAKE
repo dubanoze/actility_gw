@@ -1,0 +1,78 @@
+#!/bin/bash
+
+if [ -z "$ROOTACT" ]
+then
+        Error "ROOTACT not specified"
+        exit 1
+fi
+
+. $ROOTACT/rtbase/base/system
+
+#SYSTEM has to be exported here otherwise it won't be defined
+export SYSTEM
+
+case	$SYSTEM	in
+	wirmav2)
+#		LGW_PATH=$ROOTACT/lora_gateway_spi_x1/libloragw
+#		export LGW_PATH
+#		CROSS_COMPILE=arm-none-linux-gnueabi-
+#		export CROSS_COMPILE
+#		make $*
+		echo	"Disabled because HAL version > 4.0"
+	;;
+	natrbpi)
+		LGW_PATH=$ROOTACT/lora_gateway_usb_x1/libloragw
+		export LGW_PATH
+		CROSS_COMPILE=
+		export CROSS_COMPILE
+		make $*
+	;;
+	ir910)
+		LGW_PATH=$ROOTACT/lora_gateway_usb_x1/libloragw
+		export LGW_PATH
+		CROSS_COMPILE=armv5tel-cisco-linux-gnueabi-
+		export CROSS_COMPILE
+		make $*
+	;;
+	mtac_usb_v1.0)
+		LGW_PATH=$ROOTACT/lora_gateway_usb_x1/libloragw
+		export LGW_PATH
+		CROSS_COMPILE=arm-mlinux-linux-gnueabi-
+		export CROSS_COMPILE
+		make $*
+	;;
+	mtac_v1.0)
+		LGW_PATH=$ROOTACT/lora_gateway_spi_x1/libloragw
+		export LGW_PATH
+		CROSS_COMPILE=arm-mlinux-linux-gnueabi-
+		export CROSS_COMPILE
+		make $*
+	;;
+	fcloc)
+		echo	"Disabled because HAL version > 4.0"
+	;;
+	fcmlb)
+#		LGW_PATH=$ROOTACT/lora_gateway_spi_x1/libloragw
+#		export LGW_PATH
+#		CROSS_COMPILE=arm-linux-gnueabihf-
+#		export CROSS_COMPILE
+#		export SYSTEM
+#		make $*
+		echo	"Disabled because HAL version > 4.0"
+	;;
+	fcpico)
+		echo	"Disabled because HAL version > 4.0"
+	;;
+	fclamp)
+		LGW_PATH=$ROOTACT/lora_gateway_spi_x1/libloragw
+		export LGW_PATH
+		CROSS_COMPILE=arm-linux-gnueabihf-
+		export CROSS_COMPILE
+		export SYSTEM
+		make $*
+	;;
+	
+	*)
+		echo	"Do not know how to compile this module on $SYSTEM"
+	;;
+esac

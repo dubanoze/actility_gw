@@ -1,0 +1,2 @@
+Error options -i -n -k mandatory
+netconfig -i <interfacesfile> -n <ntpfile> -k <keyinstfile> [--dhcp 0|1 --address <ipaddr> --dns <dnslist> --ntp <ntpaddr> --mask <mask>] --gw <gatewayaddr> --key <keyinstaddr>]

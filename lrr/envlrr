@@ -1,0 +1,43 @@
+#
+#	Define shortcuts for lrr environment
+#
+
+if	[ -z "$ROOTACT" ]
+then
+	if	[ -d /mnt/fsuser-1/actility ]
+	then
+		export ROOTACT=/mnt/fsuser-1/actility
+	else
+		case $(uname -n) in
+			klk-lpbs*)
+				export ROOTACT=/user/actility
+				;;
+			klk-wifc*)
+				export ROOTACT=/user/actility
+				;;
+			*)
+				export ROOTACT=/home/actility
+				;;
+		esac
+	fi
+fi
+
+if	[ ! -d "$ROOTACT" ]
+then
+	echo	"Can not guess ROOTACT value, shorcuts disabled"
+	exit	0
+fi
+
+alias ttr="tail -f $ROOTACT/var/log/lrr/TRACE.log"
+alias vtr="vi $ROOTACT/var/log/lrr/TRACE.log"
+alias cdr="cd $ROOTACT"
+alias cdc="cd $ROOTACT/usr/etc/lrr"
+alias cdt="cd $ROOTACT/var/log/lrr"
+alias l="ls -al"
+alias lf="ls -aF"
+
+if [ -f "$ROOTACT/usr/etc/lrr/_parameters.sh" ]
+then
+	. $ROOTACT/usr/etc/lrr/_parameters.sh
+	alias cmdlrr="$SERVICELRR"
+fi

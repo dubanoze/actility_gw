@@ -1,0 +1,169 @@
+Summary of commands available since LRC 1.0.28 LRR 1.2.10
+
+Remote commands can be submitted from the CLI/telnet interface of the LRC. All of them are based on the unique ID of the LRR targeted (0804000c in examples).
+
+In current version there are absolutely no returns for the remote commands, but
+most of them have immediate effects on GUIs or wireless logger if they succeed.
+
+LRR remote commands can be classified in two types; the embedded commands which are directly treated by the LRR process and the shell commands which are interfaces to shell script commands (shell/bash scripts).
+
+Shell commands are performed through shell script files pre-existent on the LRR.
+script files are searched in custom environment first (~/usr/etc/lrr_shell), then in default environment (~/lrr/com). By this way it is quiet easy to add 
+or to customize commands.
+
+For both types of commands, when options are available it is mandatory to insert a space character between selector (ex -V) and argument (1.2.10).
+
+embedded commands :
+
+common syntax from LRC CLI : 
+
+	>>lrr command lrrid [options]
+
+- restart the LRR process
+
+	>>lrr restart 0804000c
+
+- stop the radio thread of the LRR process
+
+	>>lrr radiostop 0804000c
+
+- start the radio thread of the LRR process, the radio board is reconfigured
+
+	>>lrr radiostart 0804000c
+
+- close the radio downlink direction (uplink packets are still received and transmitted to LRC, downlink packets from LRC are just ignored)
+
+
+	>>lrr dnradiostop 0804000c
+
+- open the radio downlink direction
+
+	>>lrr dnradiostart 0804000c
+
+shell commands :
+
+These commands are performed through real shell script files pre-existent on
+the LRR. The files are searched in custom environment first (~/usr/etc/lrr_shell), then in default environment (~/lrr/com). By this way it is quiet easy to add 
+or to customize commands.
+
+common syntax : 
+
+	>>lrr shell lrrid command [options]
+
+- reboot the computer hosting the LRR process
+
+	>>lrr shell 0804000c reboot
+
+- open / close a reverse ssh connexion, the default port number is 2009 and the
+default destination is the Actility support computer
+
+	>>lrr shell 0804000c openssh [-P port_number]
+
+	>>lrr shell 0804000c closessh
+
+- disable GPS location and force static values for latitude/longitude/altitude
+
+	>>lrr shell 0804000c gpsman -LAT 2.0 -LON -3.0 -ALT 1000
+
+- perform an upgrade of the LRR software
+
+	>>lrr shell 0804000c upgrade -V 1.2.23
+	<=>
+	>>lrr upgrade 0804nd000c -V 1.2.23
+
+
+- download a configuration tar file containing the 3 major ini files
+
+	>>lrr shell 0804000c dnconfig [-C tar_config_files]
+
+- remove a custom configuration ini file. If no file is specified all custom ini
+files are removed, this returns to default configuration.
+
+	>>lrr shell 0804000c rmcustomcfg [lrr.ini] [lgw.ini] [channels.ini] [gpsman.ini]
+
+
+Details for command upgrade :
+
+The upgrade command uses FTP protocol to download a tar file of the software.
+By default the FTP server is hosted on the primary LRC port 21. The default 
+login/password on the FTP server is ftp/<no password>.
+
+The downloaded tar is controled via a md5 check given as an option or downloaded
+via a special file.
+
+A basic control is done on the number version to avoid to reinstall the same 
+software version.
+
+Upgrade can be forbidden by creating a file $ROOTACT/usr/etc/lrr/upgrade_locked 
+
+If the procedure is successful the LRR process is restared.
+
+Options :
+
+-V A.B.C	download tar file lrr-A.B.C-wirmav2.tar.gz
+
+-M md5_string	if not given a file lrr-A.B.C-wirmav2.md5 containing the md5
+		must be present on the FTP server
+
+-S system	change the name of the system software to download (ie wirmav2)
+		Obviously not recommended
+
+-F 1|2		1 : do not check version number
+		2 : same as 1 and do not check if upgrade is locked
+
+-A ftp_address	change the default FTP server address
+
+-P ftp_port	change the default FTP server port
+
+-U ftp_user	change the default FTP server user
+
+-W ftp_password	change the default FTP server user password
+
+Details for command dnconfig :
+
+The dnconfig command uses FTP protocol to download a tar file of the config.
+By default the FTP server is hosted on the primary LRC port 21. The default 
+login/password on the FTP server is ftp/<no password>.
+
+The downloaded tar is controled via a md5 check given as an option or downloaded
+via a special file.
+
+dnconfig can be forbidden by creating a file $ROOTACT/usr/etc/lrr/dnconfig_locked 
+
+If the procedure is successful the LRR process is restared.
+
+Options :
+
+-C name		download tar file cfglrr-name.tar.gz, if not given the LRR tries
+		to download a tar file specific to itself cfglrr-lrrid.tar.gz
+
+-M md5_string	if not given a file cfglrr-name.md5 or cfglrr-lrrid.md5 
+		containing the md5 must be present on the FTP server
+
+-F 1|2		1 : do not check if upgrade is locked
+
+-A ftp_address	change the default FTP server address
+
+-P ftp_port	change the default FTP server port
+
+-U ftp_user	change the default FTP server user
+
+-W ftp_password	change the default FTP server user password
+
+
+Details for command openssh :
+
+The openssh command uses SSH protocol and especially reverse SSH connexion.
+By default the default reverse SSH target is the Actility support computer, and
+can not be changed with this version.
+
+The default opened port on the reversed host is 2009.
+
+Connexion are killed after 3600 secondes.
+
+Options :
+
+-P rssh_port	change the opened port on the reversed host.
+
+
+

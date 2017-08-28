@@ -1,0 +1,14 @@
+#!/bin/sh
+# Execute any LRR post-install actions in this script.
+# E.g. creating some additonal files (temp directories/files/users etc).
+
+# Process passed-in platform environment
+# variables such as LRR_ROOT (if needed).
+ROOTACT=$LRR_ROOT
+export ROOTACT
+
+# For LRR call sysconfiglrr.sh as the final 
+# step in installation.
+$ROOTACT/lrr/com/sysconfiglrr.sh
+
+exit 0

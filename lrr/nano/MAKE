@@ -1,0 +1,21 @@
+#!/bin/bash
+
+[ "$1" = "clean" ] && exit 0
+
+if [ -z "$ROOTACT" ]
+then
+        Error "ROOTACT not specified"
+        exit 1
+fi
+
+. $ROOTACT/rtbase/base/system
+
+file="$ROOTACT/bin/nano"
+if [ -f "$file" ]
+then
+	echo "Copying nano file executable '$file'"
+	cp $file .
+else
+	echo "Can not found '$file'"
+	echo "Please install and compile ncurses and nano for this environment"
+fi

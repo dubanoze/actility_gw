@@ -1,0 +1,27 @@
+	lgw_version_info();
+	lgw_status(TX_STATUS,txstatus);
+	lgw_reg_rb(LGW_TIMESTAMP,buf,nbbits);
+			ret	= lgw_rxrf_setconf(rfi,rfconf);
+		ret	= lgw_rxif_setconf(ifi,ifconf);
+	lgw_reg_w(LGW_FRAME_SYNCH_PEAK1_POS,sw1); /* default 1 */
+	lgw_reg_w(LGW_FRAME_SYNCH_PEAK2_POS,sw2); /* default 2 */
+	lgw_reg_w(LGW_MBWSSF_FRAME_SYNCH_PEAK1_POS,sw1); /* default 1 */
+	lgw_reg_w(LGW_MBWSSF_FRAME_SYNCH_PEAK2_POS,sw2); /* default 2 */
+	lgw_reg_w(LGW_TX_FRAME_SYNCH_PEAK1_POS,sw1); /* default 1 */
+	lgw_reg_w(LGW_TX_FRAME_SYNCH_PEAK2_POS,sw2); /* default 2 */
+	lgw_start();
+	lgw_reg_check(chk);
+	lgw_stop();
+	lgw_get_trigcnt(&trig_tstamp);
+	lgw_gps_sync(&Time_reference_gps,trig_tstamp,*utc_from_gps);
+	lgw_get_trigcnt(&trig_tstamp);
+	lgw_cnt2utc(Time_reference_gps,trig_tstamp,&utc_time);
+	lgw_cnt2utc(Time_reference_gps,p->count_us,&utc_time);
+	lgw_utc2cnt(Time_reference_gps,utc_time,&(p->count_us));
+	lgw_receive(LGW_RECV_PKT,rxpkt);
+	lgw_status(TX_STATUS,txstatus);
+	lgw_status(TX_STATUS,&txstatus);
+	lgw_send(txpkt)
+	lgw_status(TX_STATUS,&txstatus);
+	lgw_get_trigcnt(&(txpkt->count_us));	// now
+	lgw_utc2cnt(Time_reference_gps,utc_time,&(txpkt->count_us)) 

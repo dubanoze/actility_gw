@@ -1,0 +1,126 @@
+Kerlink configuration requirements:
+----------------------------------
+
+- <LOCAL_DEV role="KNONE"/>		// /knet/knetd.xml
+- <CONNECT auto_connection="NO" />	// /knet/knetd.xml
+- BEARERS_PRIORITY=""			// /etc/sysconfig/network 
+
+Assumptions:
+-----------
+
+lrr version : 1.4.18
+
+We assume that kerlink soft and/or actility install procedure :
+	- add default route to eth0 if interface is OK (L2 up)
+	- does not start gprs/ppp0 and does not supervize it
+	- does not add route on ppp0 when starting pppd deamon
+	- installs files :
+		/etc/ppp/resolv.conf	// DNS to use on ppp0
+		/etc/init.d/gprs	// to start pppd and get status
+	- maintains files :
+		/tmp/resolv.conf.eth0	// DNS to use on eth0
+		/tmp/gateway.eth0	// last gateway seen on eth0
+
+Interface failover/fallback deamon:
+----------------------------------
+
+- kill existing deamons (failover and rescue supervisor)
+- load configuration
+- if rescue supervisor required start it
+- itfcurrent=error
+- infinite loop
+	- load configuration (itmain=eth0 itfrescue=ppp0)
+	- success=0
+	- if itfcurrent!=error
+		- if default route is not on itfcurrent
+			itfcurrent=error
+	- verify itfmain :
+		- if interface does not exist => decide
+		- if gateway not known => decide
+		- for each dest in route list 
+			- del+add ip route on itfmain with gateway for dest
+			- if add fails retry 5 times spaced by 1s. Failure can
+			happen for dest requiring DNS request. If no DNS request
+			is needed for this route retry only 2 times.
+		- if no ip route added => decide
+		- for each dest in route list
+			- send ping to dest timeout 5s size=0 on itfmain 
+			- on ping response success++
+			- if success >= success required  => decide
+			- wait 1s 
+
+	- decide :
+		- if success >= success required
+			- if itfcurrent != itfmain
+				- default route and DNS for itfmain
+				- if all ok itfcurrent=itfmain
+				- else itfcurrent=error
+			- wait 30s 
+		- else
+			- if itfcurrent != itfrescue 
+				- default route and DNS for itfrescue
+				- if all ok itfcurrent=itfrescue
+				- else itfcurrent=error
+			- if itfcurrent == itfrescue
+				wait 120s 
+			- else
+				wait 30s 
+
+All timers are configurable.
+
+Max time detection for main interface failure on route with only one dest : 
+(checkfreq-1) + (countaddrt*intervaddrt) == 29+10 == 39s on DNS failure
+(checkfreq-1) + (tmtpingresp) == 29+5 == 34 on dest failure
+
+
+Rescue interface supervision deamon:
+-----------------------------------
+
+- kill existing deamon (rescue supervisor)
+- load configuration
+- infinite loop
+	- load configuration (itfrescue=ppp0), if no routes for itfrescue use 
+	the same routes as ifacefailover deamon (ie itfmain routes).
+	- verify existence and status of pppd deamon
+	- if KO 
+		- restart the service => wait
+		
+	- success=0
+	### here we kwnon itfrescue is a GPRS one, it is not neccessary to add
+	### ip routes to sent icmp packet
+	- for each dest in route list
+		- send ping to dest timeout 5s size=0 on itfrescue
+		- on ping response success++
+		- if success >= success required  => wait
+		- wait 1s 
+
+	- if success == 0
+		- restart the service => wait
+
+	- wait
+		- wait 30s
+
+
+Configuration with lrr.ini file:
+-------------------------------
+
+[ifacefailover]
+	enable=1		; default 0
+	routes="actility.thingpark.com 8.8.8.8 8.8.4.4"
+	principal=eth0
+	rescue=ppp0
+	checkfreq=30		; check frequency on principal
+	returnfreq=120		; check to fallback frequency when on rescue
+	successcount=1		; success count required on routes
+	tmtpingresp=5		; timeout on ping response
+	intervping=2		; ping interval 
+	intervaddrt=1		; route add interval on failure
+	countaddrt=10		; max tries for route add
+
+
+	rescuesvp=1		; start rescue deamon
+	rescueroutes="...."	; to overwrite routes
+	rescuecheckfreq=30	; check frequency on rescue
+	rescuesuccesscount=1	; success count required on routes
+	rescuetmtpingresp=10	; timeout on ping response
+	rescueintervping=2	; ping interval 

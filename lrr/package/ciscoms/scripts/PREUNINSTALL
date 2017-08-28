@@ -1,0 +1,21 @@
+#!/bin/sh
+# Execute any LRR pre-uninstall actions in this script.
+# Typically, this script will remove any additonal installation artifacts
+# e.g. files/users that were created in POSTINSTALL
+# Note: the toplevel directory is removed by modem agent automatically after
+# this script is run (therefore THIS script doesn't need to remove it).
+
+# Process passed-in platform environment
+# variables such as LRR_ROOT (if needed).
+ROOTACT=$LRR_ROOT
+export ROOTACT
+
+if [ -f ${ROOTACT}/lrr/com/_parameters.sh ]
+then                  
+    . ${ROOTACT}/lrr/com/_parameters.sh 2>&1 >/dev/null
+fi
+
+$SERVICELRR stop
+
+exit 0
+

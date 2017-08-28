@@ -1,0 +1,5 @@
+#!/bin/sh
+
+ROOTACT=/user/actility
+export ROOTACT
+/user/actility/lrr/com/sysconfiglrr.sh

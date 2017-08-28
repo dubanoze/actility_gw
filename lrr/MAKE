@@ -1,0 +1,149 @@
+#!/bin/bash
+# vim: ft=sh: set noet ts=4 sw=4:
+
+if [ -z "$ROOTACT" ]
+then
+	Error "ROOTACT not specified"
+	exit 1
+fi
+source $ROOTACT/rtbase/base/system
+
+SELF=lrr
+echo "#####"
+echo	"$SELF for $SYSTEM"
+LRRVER=$(cat Version)
+
+Compile()
+{
+mkdir -p $ROOTACT/lrr/reg_comp_libs/$SYSTEM
+if [ -f $ROOTACT/lrr/reg_comp_libs/$SYSTEM/rtbase.version ]
+then
+	REG_COMP_VERS=$(cat $ROOTACT/lrr/reg_comp_libs/$SYSTEM/rtbase.version)
+	COMP_VERS=$(cat $ROOTACT/rtbase/Version)
+	if [ "$REG_COMP_VERS" != "$COMP_VERS" ]
+	then
+		echo "The required version for rtbase is $REG_COMP_VERS not $COMP_VERS"
+		echo "If you want to ignore this warning remove reg_comp_libs/$SYSTEM/rtbase.version"
+		exit 1
+	fi
+else
+	cp $ROOTACT/rtbase/Version $ROOTACT/lrr/reg_comp_libs/$SYSTEM/rtbase.version
+fi
+
+for i in base include mac802154 com suplog moreini util_rssi_histogram util_spectral_scan sftp nano util_fpga_start
+do
+	(
+	if [ -f $i/MAKE ]
+	then
+		cd $i
+		echo "#####"
+		echo "#####	$i"
+		echo "#####"
+		sh ./MAKE $*
+	fi
+	)
+done
+}
+
+# frequemment oublié dans les makefile
+CleanPlus()
+{	
+	rm -f */core.* > /dev/null 2>&1
+	rm -f */core > /dev/null 2>&1
+	rm -f */TRACE_* > /dev/null 2>&1
+	rm -f */*.log > /dev/null 2>&1
+	rm -f */nohup.out > /dev/null 2>&1
+	rm -f */*.pcap > /dev/null 2>&1
+}
+
+GenGitStatus()
+{
+	gitstatus=./gitstatus.txt
+	{
+		date
+		echo
+		echo "########## GIT STATUS #############"
+		git status
+		echo
+		echo "########## LAST COMMIT #############"
+		git log --oneline -1
+	} > $gitstatus
+}
+
+GenManifest()
+{
+	[ "$SYSTEM" != "ciscoms" ] && return
+	cat package/ciscoms/MANIFEST.orig | sed "s/LRRVERSION/$LRRVER/" > MANIFEST
+	cp -r package/ciscoms/scripts ./scripts
+}
+
+CleanManifest()
+{
+	[ "$SYSTEM" != "ciscoms" ] && return
+	rm -f MANIFEST
+	rm -rf ./scripts
+}
+
+case  $# in
+	0)
+		Compile
+		exit 0
+		;;
+	*)	case $1 in
+			src|source)
+				shift
+				./MAKE clean
+				sh ${MKPKGSOURCE} -p $SELF $*
+				exit 0
+			;;
+			runtime)
+				shift
+				Compile
+				echo "#####"
+				echo "#####	Generating runtime package"
+				echo "#####"
+				GenGitStatus
+				GenManifest
+				sh ${MKPKGRUNTIME} -p $SELF
+				if [ -f "./package/$SYSTEM/genpackage.sh" ]
+				then
+					file="$ROOTACT/deliveries/lrr-$LRRVER-$SYSTEM.tar.gz"
+					if [ -f "$file" ]
+					then
+						./package/$SYSTEM/genpackage.sh $file
+					else
+						echo "genpackage failed, '$file' not found !"
+					fi
+				fi
+				CleanManifest
+				exit 0
+			;;
+			opkg)
+				shift
+				./MAKE
+				sh ${MKOPKG} -p $SELF
+				exit 0
+			;;
+			clean)
+				shift
+				CleanPlus
+				Compile clean
+				exit 0
+				;;
+			svn*)
+				svncmd=$1
+				shift
+				sh ${MKSVN} -p $SELF -c $svncmd $*
+				exit 0
+			;;
+			*)
+				Compile $*
+				exit 0
+				;;
+		esac
+	;;
+esac
+
+echo "Usage: MAKE [clean|runtime|src|source]"
+exit 1
+

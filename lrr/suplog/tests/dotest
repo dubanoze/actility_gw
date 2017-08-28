@@ -1,0 +1,121 @@
+#!/bin/sh
+
+DN="$(dirname $0)/"
+DIRTEST="$ROOTACT/lrr/suplog/tests"
+DIRTMP="/tmp/lrrnetconfig"
+CMDDIR="$ROOTACT/lrr/com/cmd_shells/"
+
+checkFiles()
+{
+	dirout="$1"
+	dirtst="$2/outfiles"
+	lsres="$(ls $dirout)"
+	lstst="$(ls $dirtst | sed 's?.*/??')"
+	if [ "$lsres" != "$lstst" ]
+	then
+		echo "File list different !"
+		echo "result="
+		echo "'$lsres'"
+		echo "test="
+		echo "'$lstst'"
+		return 1
+	fi
+	savdir=$(pwd)
+	for f in $lsres
+	do
+		dirtmpcheck="$DIRTMP/check"
+		[ ! -d "$dirtmpcheck" ] && mkdir -p "$dirtmpcheck"
+		[ ! -d "$dirtmpcheck/res" ] && mkdir -p "$dirtmpcheck/res"
+		[ ! -d "$dirtmpcheck/tst" ] && mkdir -p "$dirtmpcheck/tst"
+
+		case $f in
+			*.tar.gz)
+				cd $dirtmpcheck/tst
+				tar xvf $DIRTEST/$dirtst/$f >/dev/null
+				cd $dirtmpcheck/res
+				tar xvf $dirout/$f >/dev/null
+				cd $savdir
+				resdiff=$(diff -r "$dirtmpcheck/tst" "$dirtmpcheck/res")
+				;;
+			*.md5)
+				resdiff=$(ls "$dirout/$f" "$dirtst/$f")
+				;;
+			*)
+				resdiff=$(diff "$dirout/$f" "$dirtst/$f")
+				;;
+		esac
+		if [ $? != 0 ]
+		then
+			echo "Difference in $f:"
+			echo "$resdiff"
+			rm -rf "$dirtmpcheck"
+			cd $savdir
+			return 1
+		fi
+	done
+	rm -rf "$dirtmpcheck"
+	cd $savdir
+	return 0
+}
+
+runTest()
+{
+	test="$1"
+	if [ -d "$DIRTMP" ]
+	then
+		rm -f $DIRTMP/*
+	else
+		mkdir -p $DIRTMP
+	fi
+
+	cd $test
+	. conf
+	[ "$VERBOSE" = "1" ] && echo "$CMDDIR/$SYSTEM/$CMD > $DIRTMP/out"
+	$CMDDIR/$SYSTEM/$CMD > $DIRTMP/out
+	cd ..
+	checkFiles $DIRTMP $test
+	[ $? -ne 0 ] && return 1
+	return 0
+}
+
+doTest()
+{
+	runTest "$1"
+
+	if [ $? = 0 ]
+	then
+		echo "TEST $1: OK    ($(cat $1/desc))"
+	else
+		echo "TEST $1: ERROR	($(cat $1/desc))"
+	fi
+}
+
+cd $DN
+
+if [ "$1" = "-v" ]
+then
+	VERBOSE=1
+	shift
+fi
+
+TEST="$1"
+if [ ! -z "$TEST" ]
+then
+	if [ ! -d "$TEST" ]
+	then
+		echo "Test $TEST not found !"
+		exit 1
+	else
+		doTest "$TEST"
+	fi
+else
+	LST=$(ls)
+
+	for d in $LST
+	do
+		[ ! -d "$d" ] && continue
+
+		doTest "$d"
+	done
+fi
+

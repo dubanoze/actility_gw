@@ -1,0 +1,8 @@
+Package: lrr
+Version: _REPLACE_VERSION_
+Architecture: cortexa9hf-vfp-neon
+Maintainer: Actility Support <support@actility.com>
+Priority: optional
+Section: misc
+Source: http://www.actility.com
+Description: lrr product

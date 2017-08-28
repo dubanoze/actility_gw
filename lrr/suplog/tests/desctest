@@ -1,0 +1,23 @@
+#!/bin/sh
+
+lst="$1"
+dir="../tests"
+
+if [ -z "$lst" ]
+then
+	lst="$(ls $dir)"
+else
+	lst="$lst"
+fi
+
+for t in $lst
+do
+	[ -f "$dir/$t" ] && continue
+
+	if [ ! -d "$dir/$t" ]
+	then
+		echo "Error, can't find '$dir/$t' directory"
+		continue
+	fi
+	echo "$t: $(cat $dir/$t/desc)"
+done

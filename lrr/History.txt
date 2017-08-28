@@ -1,0 +1,2438 @@
+
+###############################################################################
+1.6.10	2016/05/23
+###############################################################################
+
+- INT000: ciscoms
+	- support HAL 1.0.1
+	- now lrrid is calculated from cisco S/N
+	- compilation with -DWITH_GPS
+	- activate fine_timestamps if the following param are set:
+		* lrr.ini:[lrr].usegpstime=1
+		* lgw.ini:[gen].aeskey=ABCDEF1234567890ABCDEF1234567890
+
+###############################################################################
+1.6.10	2016/05/17
+###############################################################################
+- FIX000: wirmaar
+	- copy some shell files from wirmams to wirmaar
+	- add files usefull for packaging .ipk under wirmaar
+	- sysconfig.sh: do not try to distinguish wirmams and wirmaar,
+	  always use wirmaar
+	- analyzation of calib_loraloc.json done in lrrservice and not in
+	  sysconfig because the file doesn't exist yet during ipk installation
+
+###############################################################################
+1.6.9	2016/05/13
+###############################################################################
+
+- INT000: support kerlink loc (WIRMAAR)
+
+	- treat uplink delay because of the new lora sx array lib
+	- support gps coordinates
+	- support gps normal timestamp
+	- support fine_timestamp but in TP30 mode (no flags)
+	- sysconfig.sh: generate lowlvlgw.ini using /tmp/calib_loraloc.json
+	- enable fine_timestamp using this key in lowlvlgw.ini:
+		[board:0]
+			aeskey=810CBDF5A98B8ABC9C8480E7B70D2BED
+
+
+###############################################################################
+1.8.8	2016/05/09
+###############################################################################
+
+- FIX3104: power calibration on wirmav2/27dbm/868 now digital gain is 3 not 0.
+
+- FIX3098: gpslocation command now returns MODE= instead of LOC=
+
+- FIX0000: gpsman & gpsmanreset reduce restart LRR to 3s (instead of 15)
+
+###############################################################################
+1.8.7	2016/04/22
+###############################################################################
+
+- FIX3007: power max limitation and antenna gain
+
+ The power max requested to the radio board is now controlled after the antenna
+ gain correction. 
+ The limit is 20dbm on all base stations except on 
+ 	- kerlink/wirmav2 for which it is 30dbm if FPGA is detected at runtime
+ 	- kerlink/wirmams for which it is 30dbm we assume FPGA is present
+
+- FIX2739: default power 16
+
+- FIX0000: util_rssi_histogram (rfscanv0) correction
+
+ The first sample of the capture is incorrect and dropped
+
+- FIX2964: SF for RX2 in downlink packets overwrites default SF for RX2
+
+- NFR329: Sent indication for downlink frames
+
+###############################################################################
+1.8.6	2016/04/14
+###############################################################################
+
+- INT0000: Support ciscoms
+
+- FIX0000: SF for RX2 in downlink packets overwrites default SF for RX2
+
+- NFR326: duty cycles Up / Down are computed on one hour
+
+- NFR000: code for long IEC104 messages is now activated
+
+- NFR358: loramac payload size max is now 256
+
+	infrastruct_tp31.h redefines:
+	LP_IEC104_SIZE_MAX		=> 512
+	LP_MACLORA_SIZE_MAX		=> 256
+	LP_UNION_SIZE_MAX		=> 512-10=502
+
+	LP_PRE_HEADER_PKT_SIZE is still 	20
+	LP_DATA_CMD_LEN	is still		192
+
+
+- NFR321:  Add buffering capabilities to prevent packet loss in case of IEC 104 disconnects
+
+[uplinkstorage]
+	pktcount=30000		; memory cost for one packet is less than 300B
+	memused=50		; no storage if memory used is greater then 50%
+	rstrpersec=10		; max restore per sec (currently fixed value)
+	ctrloutq=10		; packets limit in output queue to restore
+	ctrlackq=5		; packets limit in ack queue to restore
+
+
+- NFR464:
+
+	+ add an option to dnconfig to precise that the configuration concerns
+	RF region:
+
+	dnconfig -C <region_id> -T <config_type>
+	dnconfig -C RF_EU868_2015 -T rfregion
+
+	if <config_type> == "rfregion" the radio is restarted
+
+
+	+ add a command to get RF region info:
+
+	rfregion
+	<<
+	ID=RF_EU868_2015
+	VERSION=10
+	ISM=eu868
+	ISMALTER=eu868_2015
+	>>
+
+
+
+###############################################################################
+1.6.6	2016/03/14
+###############################################################################
+
+- FIX0000: SF for RX2 in downlink packets overwrites default SF for RX2
+
+- FIX2739: default power 16
+
+- NFR000: add config for Taiwan lgw_tw920.ini channels_tw920.ini
+
+- NFR464:
+
+	+ add an option to dnconfig to precise that the configuration concerns
+	RF region:
+
+	dnconfig -C <region_id> -T <config_type>
+	dnconfig -C RF_EU868_2015 -T rfregion
+
+	if <config_type> == "rfregion" the radio is restarted
+
+
+	+ add a command to get RF region info:
+
+	rfregion
+	<<
+	ID=RF_EU868_2015
+	VERSION=10
+	ISM=eu868
+	ISMALTER=eu868_2015
+	>>
+
+###############################################################################
+1.6.5	2016/03/11
+###############################################################################
+
+- NFR0000: TP31
+	+ long messages on IEC104: xlap.c xlap.h, but not activated
+	+ infrastruct_tp31.h
+	+ infrastruct_tp30.h
+
+- INT0000: main.c:RecvRadioPacket()
+	szh was initialized to LP_HEADER_PKT_SIZE_V0 (49) but now 
+	LP_PRE_HEADER_PKT_SIZE (20) + sizeof(t_lrr_pkt_radio) is no more == 49
+	=>
+	szh             = LP_PRE_HEADER_PKT_SIZE+sizeof(t_lrr_pkt_radio)
+
+###############################################################################
+1.6.4	2016/03/08
+###############################################################################
+
+- INT0000: wirmams
+
+	+ add login support
+
+	+ add dngenipk.sh, for installing a generic .ipk
+
+- INT0000: support new foxconn prototype
+
+	+ new parameter in lrr.ini
+
+	[fcmlb]
+		spidevice=/dev/spidev1.0
+
+	+ few changes in makefile
+
+- NFR000: listen before talk
+
+	+ new low level configuration radio parameters in "lowlvlgw.ini"
+
+	[lbt]
+		enable=1		; 0|1|2 default 0
+		rssitarget=160		;
+
+	if enable=1 : enable LBT treatement in lib lora
+	if enable=2 : start external exe to load firmware to LBT
+
+	+ hardware depencies : Kerlink with FPGA+SX1272 mandatory
+
+
+- INT0000: listen before talk
+
+	+ new semtech library (not official delivery)
+
+	+ specific code activated only if #define LGW_LBT_ISSUE is found in
+	the .h of the library
+
+- INT0000: hardware detection FPGA 27dbm
+
+	+ on wirmav2 the detection of the hardware was based on variable
+	LORABOARD_TYPE="868-27dBm" from file "/tmp/loraboard_version". It seems
+	that some versions set LORABOARD_TYPE="868-FPGA".
+	Now both are supported.
+
+- FIX0000: channels.ini inheritance
+
+	avoid inheritance from default channels_ismband.ini when using a
+	specific RF region configuration otherwise unused channels are still
+	defined and wrong RX2 parameters are set. 
+	The consequence of the fix is that sub bands (G1..G3) are no more 
+	defined for the channels: the RF region configuration must be downloaded
+	once again to get sub bands from the LRC.
+
+###############################################################################
+1.6.3	2016/03/02
+###############################################################################
+
+- NFR483: Made downlink configurable
+
+	1) Add a key to disable downlink transmission when starting LRR or radio
+	thread.
+
+	[lrr]
+		radiodnstopped=1	; default is 0
+
+	TWA/GUI still can enable downlink with dnradiostart command but at the
+	next restart (LRR or radio thread) the option will be reactivated.
+
+	2) Add a key to disable radio thread launch when starting LRR so uplink
+	and downlink direction are stopped.
+
+	[lrr]
+		radiostopped=1		; default is 0
+
+	TWA/GUI still can start radio thread with radiostart command but at the
+	next LRR restart the option will be reactivated.
+
+	3) Add a key to save the current radio state configuration (stopped and
+	dnstopped).
+	
+	[lrr]
+		radiostatesaved=1	; default is 0
+
+	When this option is set, commands (dn)radiostart and (dn)radiostop from
+	TWA have persistent effects when restarting LRR or rebooting the host.
+
+
+	4) These 3 keys can be set/unset remotely via the LRC/CLI:
+		lrr shell XXXXXXX setiniparam custom lrr <key_name> 0|1
+	If you do that the LRR must be restarted.
+
+	5) Once the key radiostatesaved has been set to 1 it is more difficult
+	to return to a non persistent radio state:
+		lrr shell XXXXXXX setiniparam custom lrr radiostatesaved 0
+		lrr shell XXXXXXX setiniparam _state lrr radiostopped X
+		lrr shell XXXXXXX setiniparam _state lrr radiodnstopped X
+	If you do that the LRR must be restarted.
+
+- NFR180: gpsmanreset remote command
+
+	delete GPS location set manually and return to default GPS mode.
+	If the file ~/usr/etc/lrr/gpsman.ini exists the file is deleted and
+	the LRR is restarted.
+
+- NFR180: gpslocation remote builtin command
+
+	return current location
+	<<<
+		LOC=2
+		LAT=45.806232
+		LON=4.763479
+		ALT=315
+		CNT=13245
+	>>>
+
+	LOC=0	unknown location method 
+	LOC=1	manual location method
+	LOC=2	GPS location method
+
+	CNT=xxx	number of GPS pulses received since process start
+
+- NFR180: gpsstatus remote command
+
+	return GPS status on kerlink/wirmav2 only (raw data from kerlink tools)
+	<<<
+		date=2016-03-02 13:56:51
+		fix=1
+		lat=4580658
+		long=476337
+		alt=300
+		course=0
+		speed=0
+		nsat=4
+		hdop=11
+	>>>
+
+- NFR464: RFRegion mono sector vs multi sectors
+
+	if a lgw.ini for mono slot is detected on a multi slots platform, the 
+	mono slot description is applied to all slots.
+	This detection is only based on the presence of [rfconf:0].freqhz whereas
+	[rfconf:0:0].freqhz is required for multi slots.
+	All attributes of [rfconf:B:Y] are concerned except txenable & rssioffset
+	All attributes of [ifconf:B:X] are concerned. 
+
+	By this way it is possible to apply a basic region configuration 
+	generated and downloaded on/from LRC.
+
+	WARNING: low level radio default configuration files (lowlvlgw.ini) must
+	never contain [rfconf:0].freqhz
+
+	lgw_ms.c:LgwConfigure()
+
+- NFR464: extension for future use
+
+	a key can be added in radio configuration to set a version number to
+	a Rf Region ID
+
+	[gen]
+		rfregionid=RF_868_2015
+		rfregionidvers=10		; default is 0
+
+- NFR464: extension for future use
+
+	add keys to set the numbers of radio boards and antennas lowlvlgw.ini:
+
+	[gen]
+		board=1
+		antenna=1
+
+	If antenna is not set or set to 0, assume #antenna is #boards.
+
+
+- NFR0000: platforms portabilty
+
+	upgrade / dnconfig / dngentar / moreini commands no more depend on:
+		+ md5sum availabilty
+		+ wget or curl availabilty (one is mandatory)
+		+ support of tar without z option on tar+gzip files
+
+	all remote commands downloading tar files support "-M no" to do not 
+	check md5 even if command exists. When md5sum does not exist the -M 
+	option is forced to "no".
+
+	upconfig / rfscanv0 / rfscanv1 commands no more depend on:
+		+ gzip availabilty
+		+ ftpput or curl availabilty (one is mandatory)
+
+- INT0000:
+
+	full merge wirmav2 and wirmams but:
+		lgw_x1.c is for wirmav2 
+		lgw_ms.c is for wirmams 
+
+- INT0000: power max
+
+	power max is 27 on wirmams (not 20) and does not depend on radio board
+	hardware version.
+
+- INT0000: default configuration files
+
+	+ create a special file lowlvlgw_wirmams.ini for Kerlink multi slots
+	+ restore lowlvlgw.ini to mono slot mode
+
+
+
+###############################################################################
+1.6.2	2016/02/12
+###############################################################################
+
+
+- FIX0000: can not give additionnal parameters to rfscan tools
+	util_rssi_histogram and util_spectral_scan tools can be started with 
+	parameters but it was impossible to give additional parameters to 
+	rfscanv0 and rfscanv1 commands.
+	Note that parameters for scan tools must be placed after parameters for
+	commands.
+
+	ex:
+		rfscanv1 -T file_ref -f 863:0.1:870
+
+
+- INT0000: memory corruption
+	random byte (one) set to 0 when reading [<system>/netif:x].name and
+	[<system>/mfs:x].name, no effect on main platforms, crash on wirmams.
+
+
+###############################################################################
+1.6.1	2016/01/28
+###############################################################################
+
+- FIX2497: "LRR 1.6.0 can break compatibility with older custom lrr.ini files"
+
+	to ensure full compatibility for .ini files, encrypted fields must be 
+	now placed between [ ], example:
+
+	[support:0]
+	; ssh parameters
+	addr=[abf6ca9fbd3a2bb08bdbd7c7e47caa50225fd0dec6ffa1504c2769bc97a0facd]
+	addr_crypted_k=0
+
+	It is necessary because default "lrr.ini" is now delivered with 
+	encrypted attributs, when LRR merges default & custom "lrr.ini" the
+	attributs *_crypted_k are inherited and LRR tries to decrypted even
+	custom attributs are not crypted.
+
+- FIX2534: saverff -L LRRID convert to lower case before testing parameter lrr.
+
+- FIX0000: improve immediate downlink mode (permanent listening & class C). The
+effective downlink order is not guaranted.
+
+- FIX0000: automatic reverse ssh is started if support1 and support2 do not 
+provide a remote port. 50000 + (LRRID % 10000)
+
+- INT0000: transmit power gain against temperature. LgwTempPowerGain() must be
+called before lgw_send(). lgw_x1.c:SendPacketNow()
+
+- INT0000: [lrr].devaddr now supports exclusion devaddr=-15f4e74a
+
+###############################################################################
+1.6.0	2015/12/17
+###############################################################################
+
+- NFR398: new hardware support kerlink (FPGA+2sx1257+1sx1272+27bdm)
+
+	+ use SEMTECH lib lora gateway 3.2.0
+	+ no more support for USB mode !!!
+	+ transmit power calibration fully configurable
+	+ low level radio board configuration
+	+ Actility deactivate the -425/+425kHz to support SG920 frequencies:
+		loragw_hal.c:lgw_rxif_setconf()
+
+	=> these LRR versions (1.6.x) are for Kerlink wirmav2 only due to the 
+	absence of USB support in lib lora 3.2.0
+
+- NFR398: new file to retrieve hardware radio board characteristics
+	+	~/usr/etc/lrr/_system.sh
+
+	On Wirmav2, this file is created at launch time. It is the result of the
+	command get_version. By this way the LRR process will know if the radio
+	board supports transmit power up to 27bdm (LORABOARD_TYPE="868-27dBm").
+
+- NFR398: new files for low level radio configuration and hardware used
+
+	+ ~/lrr/config/lowlvlgw.ini
+	+ ~/lrr/config/lowlvlgw_<system>.ini
+	+ ~/usr/etc/lrr/lowlvlgw.ini
+
+	+ hardware description and low level configuration of the radio board:
+		clock source, sx12xx types, rssi offset, ...
+
+	+ transmit power calibration: it is now fully configurable according
+	to base frequencies and radio board type (sx12xx type, 20-27dbm, ...)
+
+	example : the RSSI is measured with a LoraMote (distant few meters) with
+	10 downlink packets
+
+	power requested on LRR-27dbm	RSSI measured on LoraMote
+	4				-48..-47
+	10				-43..-39
+	14				-32..-30
+	20				-29..-28
+	27				-25..-24
+
+	power requested on LRR-20dbm	RSSI measured on LoraMote
+	4				-47..-46
+	10				-41..-39
+	14				-39..-37
+	20				-29..-29
+
+
+- NFR255: LRR (VPN): Configuration commit enhancement for VPN
+
+	saverff command launches shells in ~/usr/etc/saverff/*.sh
+
+- NFR384: Protect the USB key Firmware upgrade mechanism
+
+	+ based on /etc/usbkey.txt whose contain must match a key in the same
+	file on USB key. If this is the case reboot & update are authorized.
+
+	+ "usbprotecton" builtin command to disable USB automatic update
+
+	+ "usbprotectoff" builtin command to enable USB automatic update
+
+	+ at launch time LRR process create or restore /etc/usbkey.txt to
+	insure the system is in protected mode. If the LRR process creates 
+	itself the /etc/usbkey.txt content file is "usb_auto_protect".
+
+- NFR385: Path traversal with remote commands
+
+	+ '.' '/' '$' are now forbidden in remote command names.
+
+	+ "../sysconfiglrr" is an exception.
+
+- NFR386: Configuration files encryption
+
+	+ It is possible to encrypt attributs in configuration files. Standard
+	OpenSSL libraries are used. The keys/ivs and the encrypted values always
+	appear under ascii hexadecimal format (32bytes hexa for keys).
+
+	+ Cipher is AES 128 CBC with IV=00000000000000000000000000000000
+	The LRR exe is coded with 3 hardcoded/obfuscated keys, numbered 0,1,2.
+
+	+ Any attribut can be stored in encrypted format, you just have to 
+	mark it as "encrypted with key number X". This is done by adding a 
+	special attribut named <attributname>_crypted_k=X
+
+	[support:0]
+	addr=8b3225ed9d164a6f806c16186b222f27e614db8c45db9dfe1a938bbd990da4b8
+	addr_crypted_k=0	; encrypt attribut witk Key #0
+
+	In the default configuration all attributs from [support:0]&[support:1]
+	are delivered in encrypted format. If you plan to use non encrypted 
+	attributs for custom use, you have to reset the special attribut:
+
+	[support:0]
+		pass=password
+		pass_crypted_k=	; <empty> => not encrypted
+
+
+	+ Encrypt some values ("support","21","") using LRR tool:
+	  ./lrr/com/keycrypt.x
+	  enter key (128b ascii hexa format [0-9a-f][0-9a-f]x16):
+	  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5
+	  11111111111111111111111111111111
+	  11111111111111111111111111111111
+	  enter value to encrypt (max [0-128]bytes):
+	  support
+	  uncrypted='support' => crypted='1907fa47c927520ca28ff14c920f627c'
+	  enter value to encrypt (max [0-128]bytes):
+	  21
+	  uncrypted='21' => crypted='d911383c697476b6aca568cfae411a4e'
+	  enter value to encrypt (max [0-128]bytes):
+
+	  uncrypted='' => crypted='f316c89911b1b91c6b73dbf832474d14'
+
+	+ Decrypt some values using LRR tool:
+	  ./lrr/com/keycrypt.x -d
+	  enter key (128b ascii hexa format [0-9a-f][0-9a-f]x16):
+	  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5
+	  11111111111111111111111111111111
+	  11111111111111111111111111111111
+	  enter value to decrypt (max [0-256]bytes):
+	  1907fa47c927520ca28ff14c920f627c
+
+	  crypted='1907fa47c927520ca28ff14c920f627c' => uncrypted ='support'
+
+
+	+ Encrypt a value ("support") using openssl tool:
+		echo -n "support" > infile.txt
+		IV=00000000000000000000000000000000
+		KEY=11111111111111111111111111111111
+		openssl aes-128-cbc -K $KEY -iv $IV -e -in infile.txt | hd
+		 -> 19 07 fa 47 c9 27 52 0c  a2 8f f1 4c 92 0f 62 7c
+	If you crypt by this way, note that commands will probably appear in 
+	the shell history command.
+
+
+- NFRXXX: temperature measurement
+
+	Not activated by default waiting for Kerlink correction
+	[wirmav2/temperature]
+		enable=0
+		device=/sys/bus/iio/devices/iio:device0/in_voltage3_raw
+
+	For tests only it is possible to enable it but in this case it is
+	mandatory to deactivate power voltage measurement, indeed access to
+	any ADC device corrupt the temperature device.
+
+- NFRXXX: transmit power gain against temperature
+
+	The temperature measurement must be enabled.
+	[wirmav2/temperature]
+		poweradjust=0	; enable power/temperature adjustement
+		extadjust=-20	; estimated internal/external temperature delta
+
+- NFRXXX: traces redirection with netcat
+
+	add a remote command "netcatlog" -A ipaddr -P port
+
+- FIX0000: the code that tests whether the radio board is available for 
+transmission before to pickup a message in the downlink queue is restored.
+
+This test was disabled because on some base stations (USB) the modem status 
+remains indefinitely blocked in TX mode. This does not happen on Wirmav2 (SPI).
+
+- FIX0000: automatic reverse ssh is no more started if support1 and support2 do 
+not provide a remote port.
+
+- FIX0000: backup/restore procedure saverff.sh
+
+	+ suppress -type f for find command to preserve symbolic links
+	+ add /etc/rc.d/init.d/settime
+	+ add /etc/rc.d/init.d/firewall /etc/rc.d/rc*.d/*firewall*
+	+ add /etc/rc.d/rc*.d/*lrr*
+	+ add /etc/usbkey.txt
+
+- lgw.ini :
+	+ new format for sync word, to avoid confusion "private" and "public" 
+	strings are accepted :
+
+	[gen].syncword=0x12|private
+	[gen].syncword=0x34|public
+
+- better centering frequencies for SG920 (lgw_sg920.ini)
+
+
+###############################################################################
+1.4.22	2015/11/19
+###############################################################################
+
+- FIX0000: RX2 frequency for "channels_eu868_2015.ini" is 869.525 (not 867.90), 
+so it is the same frequency as "channels_eu868.ini".
+
+- FIX0000: check that all shells do not use if [ == ] instead of if [ = ]. 
+	== is not supported by all shell/bash.
+
+- FIX0000: Call LgwStop() when the radio thread is stopped. This mandatory to
+dettach LRR process from USB device and allows to execute "util_rssi_histogram".
+
+- review the way to build "util_rssi_histogram" on the different targets
+	MAKE and Makefile
+
+###############################################################################
+1.4.21	2015/10/16
+###############################################################################
+
+
+- new custom configuration file "custom.ini" only loaded from ~/usr/etc/lrr
+
+[antenna:X]
+	gain=G		// in dbm
+
+
+- tx power adaptation :
+	TxPowerPacket = TxPower(RFRegion) 
+			+ DeltaPower(ChannelDown(RFRegion)) 
+			- AntennaGain(0)	// only one TX antenna
+
+- add setiniparam shell
+	+ set one parameter in a .ini file
+	  Use: setiniparam <inifile> <section> <attribute> <value>
+	    <inifile>: ini file to modify/create. If '.ini' extension is not specify it will be added.
+	    <section>: section name
+	    <attribute>: attribute name
+	    <value>: value. It can be several 'words', or empty
+	    ex: setiniparam lgw gen power 8
+
+- add "logicchan" :
+	return the last logical channels loaded
+	parameters are saved in "~/var/log/lrr/logicchan.txt"
+
+- add "gps" :
+	return the GPS info via kmstool position (wirmav2 only)
+
+
+###############################################################################
+1.4.20	2015/10/14
+###############################################################################
+
+- add key [gen].rfregionid in "lgw.ini" to specify the RF region id of the LRR.
+ If key is set the full configuration of logical channels file (channels.ini) is
+ search only in the custom configuration. There is no inheritance from files
+ in ~/lrr/config/channels*.ini
+
+- the default FTP server for download is no more lrc1.thingpark.com but it is
+now the first lrc declared in "lrr.ini" (laplrc[0].addr). Affected commands are
+dnconfig.sh, dngentar.sh, moreini.sh, upgrade.sh, ping.sh.
+
+- add "radioparams" :
+	return the last radio parameters transferred to the radio board
+	parameters are saved in "~/var/log/lrr/radioparams.txt"
+
+- add "radiorestart" :
+	- reload lgw.ini and channels.ini (lgw.ini was already reloaded)
+	- reset dnradiostop
+	- stop + configure + start the radio board
+
+- add "rfscanstop" :
+	to stop rfscan processes (v0 and v1)
+
+- all commands with -M <md5> option support <md5> = "no" to skip md5 check.
+
+- LRR process tries to detect as fast as possible that the power is off or on.
+A special message is immediatly sent to LRCs.
+
+[wirmav2/power]
+;	power value is a integer read from special device
+;	if value is > 250 main power,internal battery [200..120],< 110 power off
+	enable=1
+	device=/sys/bus/iio/devices/iio:device0/in_voltage7_raw
+	down=220
+	up=230
+
+- shell and executable moreini :
+	+ merge ini files
+	  Use: moreini [-T] [-M <md5>] [-A <ftpserver>] [-P <port>] [-U <user>] [-W <password>] <tarname>
+	    <tarname>: the tar file containing the .ini file(s) to merge
+	    -T: test mode. The result is only displayed, no .ini file is modified/created
+	    -M <md5>: specify the md5 string used to control the tar file. This option is required
+	              if the file <tarname>.md5 is not available on the ftp server
+	    -A <ftpserver>: specify the ftp server name or address (default: "lrc1.thingpark.com")
+	    -P <port>: specify the ftp port to use for the download (default: 21)
+	    -U <user>: specify the username to use for ftp download (default: "ftp")
+	    -W <password>: specify the password to use for ftp download (default: "")
+	  Merge .ini configuration files in $ROOTACT/usr/etc/lrr/ directory
+	  The files can be lrr.ini, lgw.ini or channels.ini.
+	  At least one of these files must exist in the tar
+	  The .ini files must be in the root directory of the tar
+
+- shell upconfig :
+	+ upload current configuration of LRR to FTP server support
+	FTP dest is "UPLOAD_LRR/CONFIG/cfglrr-${LRRID}-YYYYMMDDHHMMSS.tar.gz"
+
+	+ default FTP parameters defined in "lrr.ini" :
+		[support:0]
+		;	ftp parameters
+			ftpaddr=support1.actility.com
+			ftpuser=ftp
+			ftppass=
+			ftpport=21
+
+	+ options supported : -A addr -P port -U user -W password
+
+
+- shell rfscanv0 :
+	+ start a radio frequencies scan with Semtech tool v0. The radio thread
+	of the LRR is stopped before tool is launched and restarted when the 
+	scan tool stops. Scan result is uploaded to FTP server support.
+	FTP dest is "UPLOAD_LRR/RFSCAN/rfscan_${LRRID}_YYYYMMDDHHMMSS.csv.gz"
+
+	+ default FTP parameters defined in "lrr.ini" :
+		[support:0]
+		;	ftp parameters
+			ftpaddr=support1.actility.com
+			ftpuser=ftp
+			ftppass=
+			ftpport=21
+
+	+ options supported : -A addr -P port -U user -W password -T token -F
+		all other options are passed to the scan tool.
+		-F can be used to unlock rfscan.pid file to avoid multiple run
+		of the command (not recommended)
+		-T token can be used to add a cross reference to the FTP file
+		dest "rfscan_${LRRID}_${TOKEN}_YYYYMMDDHHMMSS.csv.gz"
+
+
+- shell rfscanv1 :
+	+ same as rfscanv0 but :
+		- use "util_spectral_scan" instead of "util_rssi_histogram"
+		- special radio board (FPGA+2xSX12xx) is required
+		- LRR is not detached from radio board and so continues to listen
+		sensors.
+
+
+- NFR 254 :
+	+ restart periodically the reverse ssh (autoreversesshtimer*10)
+	+ the remote port for the reverse ssh is now get from file :
+		"AUTOREVSSH_LRR/${LRRID}"
+	+ default FTP parameters defined in "lrr.ini" :
+		[support:0]
+		;	ftp parameters
+			ftpaddr=support1.actility.com
+			ftpuser=ftp
+			ftppass=
+			ftpport=21
+
+
+- shell dngentar.sh : all NFR for KPN requiring specific config or software
+
+	+ add a shell for installation of generic tar.gz file
+	   Use: dngentar -T <tarname> [-D <targetdir>] [-M <md5>] [-A <ftpserver>] [-P <port>] [-U <user>]
+	        [-W <password>] [-F 1]
+   	   -T <tarname>: the file to install must be named <tarname>.tar.gz, and the command is "-T <tarname>"
+                 	   without the ".tar.gz"
+   	   -D <targetdir>: the extraction is done in <targetdir> instead of "/tmp"
+   	   -M <md5>: specify the md5 string used to control the tar file. This option is required
+             	   if the file <tarname>.md5 is not available on the ftp server
+   	   -A <ftpserver>: specify the ftp server name or address (default: "lrc1.thingpark.com")
+   	   -P <port>: specify the ftp port to use for the download (default: 21)
+   	   -U <user>: specify the username to use for ftp download (default: "ftp")
+   	   -W <password>: specify the password to use for ftp download (default: "")
+   	   -F 1: force download even if $ROOTACT/usr/etc/lrr/dngentar_locked file exists
+ 	   Install a tar.gz file on a lrr
+ 	   tar is extracted in /tmp on the lrr
+ 	   the tar file can contain "preinstall.sh" and "postinstall.sh" scripts executed
+ 	   respectively before and after the extraction. They must be located at the base
+ 	   of the tar tree, and these 2 files are always extrated in /tmp, even if option -R is used
+ 	   the execution right must be set on these 2 files
+
+- NFR XXX :
+	+ add the LRR version and the date of the last backup system in the
+	boot loader environement.
+
+	+ add command "fw_printenv.sh" to lrr shell commands (wirmav2 only).
+
+	+ add command "get_version.sh" to lrr shell commands (wirmav2 only).
+
+
+- NFR 28 :
+	+ add parameter [ifacefailover].rescuesuccesscount to set the number
+	of success ping required on routes for rescue itf. 
+	Default is [ifacefailover].successcount
+
+- NFR 217 : Network filters with iptables
+
+	see doc/iptables.txt
+
+	based on KERLINK /etc/init.d/firewall updated by LRR install
+
+	WARNING : it is mandatory to run ~/lrr/com/sysconfiglrr.sh after tar
+	package extract
+
+
+	+ add iptables info for command "netinfo" (iptables -L -n -v)
+
+	+ add command "iptableson"
+
+	+ add command "iptablesoff"
+
+
+- NFR 253 : EU868 2015
+
+
+	+ deliver configuration files for EU868 2015 :
+		lrr/config/channels_eu868_2015.ini
+		lrr/config/lgw_eu868_2015.ini
+
+	+ to use it :
+		[ism]
+			band=eu868
+			bandalter=eu868_2015
+
+	+ new frequencies are :
+		chan001 G1 n='LC1'  frhz=868100000 power=14 rx2=0
+		chan002 G1 n='LC2'  frhz=868300000 power=14 rx2=0
+		chan003 G1 n='LC3'  frhz=868500000 power=14 rx2=0
+		chan004 G2 n='LC4'  frhz=867100000 power=14 rx2=0
+		chan005 G2 n='LC5'  frhz=867300000 power=14 rx2=0
+		chan006 G2 n='LC6'  frhz=867500000 power=14 rx2=0
+		chan007 G2 n='LC7'  frhz=867700000 power=14 rx2=0
+		chan008 G3 n='LC8'  frhz=867900000 power=14 rx2=0 
+		chan127 G3 n='LC9d' frhz=867900000 power=20 rx2=1
+
+	+ allowed value for [ism].band are :
+		eu868 | sg920 | us915
+	the default value is still eu868
+
+	+ allowed value for [ism].bandalter are :
+		eu868_2015 | us915h8
+	the default value is still <empty>
+
+	+ sx1301 x 1 configuration file (lgw_eu868_2015) was created with tools:
+		genband.x -u867100000:200000 -h0
+
+	+ the key ism.bandlocal is renamed ism.bandalter, old name is still
+	use for previous installs.
+
+	+ add key [ism].asymdownlink to precise if the LORAWan protocol must be 
+	used in asymmetric way for downlink packet (chan down=(chan up%8)+127).
+	By default asymdownlink is 0 and is forced to 1 if ism.band is "us915".
+
+###############################################################################
+1.4.17	2015/09/14
+###############################################################################
+
+- add some files to system bakcup on wirmav2 :
+	/etc/rc.d/init.d/lrr			+
+	/etc/rc.d/init.d/network_functions	+
+	/etc/sysconfig/network			+
+	/etc/group
+	/etc/gshadow				+
+	/etc/ntp.conf				+
+	/etc/passwd
+	/etc/profile				+
+	/etc/shadow
+	/etc/shells				+
+	/home/support				+ (directory)
+	/knet/knetd.xml				+
+
+
+
+- NFR 28/258 : ifacefailover improvments and GPRS/PPP supervision :
+
+	- KERLINK/WIRMAV2 configuration requirements :
+		-- <LOCAL_DEV role="KNONE"/>	// /knet/knetd.xml
+		-- BEARERS_PRIORITY=""		// /etc/sysconfig/network 
+
+	We "just" assume that kerlink soft and/or actility install procedure :
+		- add default route to eth0 if interface is OK (L2 up)
+		- does not start gprs/ppp0 and does not supervize it
+		- does not add route on ppp0 when starting pppd deamon
+		- installs files :
+			/etc/ppp/resolv.conf	// DNS to use on ppp0
+		- maintains files :
+			/tmp/resolv.conf.eth0	// DNS to use on eth0
+			/tmp/gateway.eth0	// last gateway seen on eth0
+
+	- ifacefailover.sh improvments :
+	-- do not frequently reconfigure default route on interfaces, this is 
+	now done only on interfaces switches.
+	-- do not check more routes than required (succes count vs routes count)
+	-- change the default ping routes to avoid DNS resolution failures
+	and mainly to avoid to disturb TCP on lrc1 and lrc2 when ppp0 is used.
+		routes="actility.thingpark.com 8.8.8.8 8.8.4.4"
+	-- when adding route (route add -host $route) to test eth0 recover, if
+	the command fails retry 10 times. Failure can happen on route which 
+	requires a DNS resolution and the request fails. That why it is a good
+	pratice to set urls AND ip addresses in routes list.
+		[ifacefailover]
+			intervaddrt=x	; default 1s
+			countaddrt=x	; default 10
+	-- add a delay (sleep in sec) between ping for each route (default 1) to
+	avoid failover decision on short time network problems.
+		[ifacefailover]
+			intervping=x	; default 1s
+	-- add an exit timeout (5s) for ping command in case of definitive lock
+	or long time response.
+		[ifacefailover]
+			tmtpingresp=x	; default 5s
+	-- The data part of ping packet is set to 0 to reduce consumption (no
+	need of RTT here).
+	-- start "ifacerescuespv.sh" deamon to supervize pppd deamon and ppp0 
+	interface if rescuesvp is set to 1 (default).
+
+	GPRS/PPP supervision :
+	-- use /etc/init.d/gprs [status|start|restart] to interact with pppd. 
+	-- by pinging the same routes as ifacefailover (can be overwritten),
+	pppd deamon is restarted if all pings fail. The data part of ping packet
+	is set to 0 to reduce consumption.
+	-- add a delay (sleep in sec) between ping for each route (default 2) to
+	avoid restart decision on short time network problems.
+	-- add an exit timeout (5s) for ping command in case of definitive lock
+	or very long time response.
+
+	to activate these features (default value is activated)
+		[ifacefailover]
+			enable=1		// default 0
+			rescuesvp=1		// default 1
+			rescueintervping=2	// default 2
+			rescuetmtpingresp=5	// default 5
+			rescueroutes="...."	// to overwrite routes to ping
+
+	Notes : 
+	- these features should work on system without SIM card, obviously this
+	will cause unnecessary treatements.
+	- these commands share the same config file usr/data/ifacefailover.cfg 
+	generated from lrr.ini and this file is reloaded permanently; so it is
+	easy to simulate network problems by changing ROUTES or RESCUEROUTES
+	with IP addresses not responding to ping.
+
+- NFR 138 :
+	- compute RTT ping primary LRC (lrr.laplrc[0].addr) on eth0 and ppp0
+	- ping periodicity 60s, configuration with lrr.pingrttperiod
+	- use "ping -s8 -w10 -W10 -c1 -Iitf addr" and wait for  line containing 
+	"time=xxx" in millisecond. Results less than 1ms are rounded to 1ms.
+	- On GPRS interface type the data part of ping packet is set to 8 to 
+	reduce consumption even 4 seems enough to get RTT.
+
+- NFR 254 (phase 2) :
+
+ if connection to LRC1 & LRC2 is not possible during more than
+ lrr.autoreversesshtimer sec (default 1200) a reverse ssh is auto started.
+ To determinate the destination port to use, a ftp get is done on url :
+	 "ftp://support@support1.actility.com:21/lrr/autorevssh/${LRRID}"
+ The contain of the file is supposed to be a port number in ASCII/DEC format.
+ If the request fails the remote port is (LRRID % 10000) + 50000.
+
+ if connection is restablished to LRC1 or LRC2, the autoreverse ssh is killed,
+ (in fact all reverse ssh are killed).
+
+
+ limitations vs original NFR254 :
+ 	- support1 + support2 : support2 does not exist
+	- can not determinate if the execution of ssh is successfull or not
+
+ informations for reverse ssh connection is now configurable in lrr.ini. It is
+always possible to overwrite default values with -A addr -D port options.
+
+	;
+	;	support:0.* are passed to openssh command which has the same
+	;	default values
+	;
+
+	[support:0]
+		addr=support1.actility.com
+		user=support
+		pass=support
+		port=81
+
+	;
+	;	support:1 actualy not used
+	;
+	[support:1]
+		addr=support2.actility.com
+		user=support
+		pass=support
+		port=81
+
+- interface state : 2 TPWA point of vue
+	- if L2 is OK and DHCP is OK but no ping acked on the period, the 
+	network seems down so we return 2 for interface state 
+		(LRR_wan/LrrIp/Int/state).
+
+###############################################################################
+1.4.16	2015/08/24
+###############################################################################
+
+- NFR 254 :
+
+ if connection to LRC1 & LRC2 is not possible during more than
+ lrr.autoreversesshtimer sec (default 1200) a reverse ssh is auto started. The 
+ remote port is (LRRID % 10000) + 50000.
+
+ if connection is restablished to LRC1 or LRC2, the autoreverse ssh is killed,
+ (in fact all reverse ssh are killed).
+
+
+ limitations vs original NFR254 :
+ 	- support1 + support2 : support2 does not exist
+	- can not determinate if the execution of ssh is successfull or not
+
+ informations for reverse ssh connection is now configurable in lrr.ini. It is
+always possible to overwrite default values with -A addr -D port options.
+
+	;
+	;	support:0.* are passed to openssh command which has the same
+	;	default values
+	;
+
+	[support:0]
+		addr=support1.actility.com
+		user=support
+		pass=support
+		port=81
+
+	;
+	;	support:1 actualy not used
+	;
+	[support:1]
+		addr=support2.actility.com
+		user=support
+		pass=support
+		port=81
+
+- NFR 258 :
+
+  firmware : 
+  	PROD_FW=wirmaV2_wirgrid_v2.1
+  knetd.xml :
+  	<LOCAL_DEV role="KNONE"/>
+	<CONNECT retry_timeout="10" />
+	<CONNECT auto_connection="YES" />
+	<AREA id="default">
+		<ACCESS_POINT bearer="gprs" />
+	</AREA>
+  /etc/sysconfig/network :
+	BEARERS_PRIORITY="eth0,ppp0,eth1"
+
+ + unitary tests :
+ 	plug/unplug RJ45 : ok
+	power on/off switch : ok
+	start/stop ethernet (/etc/init.d/ethernet) : ok
+
+ + stability tests (6 days) :
+ 	in loop (sleep 600; ethernet stop; sleep 180; ethernet start) : ok
+
+- NTP service detection based on :
+	"/var/run/ntpd.pid"	for WIRMAV2
+	"/var/run/ntpd.pid"	for NATRBPI
+	"/var/run/ntp/ntpd.pid"	for IR910
+	NULL			for MTAC
+	NULL			for FCMLB
+
+
+- ifacefailover is disabled by default in lrr.ini :
+
+	[ifacefailover]
+		enable=0
+
+  // ifacefailover must not be started on wirmav2 firmware 2.1
+
+- wirmav2 only :
+	+ size max for daily traces (var/log/lrr/TRACE.log) is fixed to 10MB
+	+ a command is started in background to backup(move) files traces on the
+	SD card : /mnt/mmcblk0p1/actility/traces/
+	
+- shell command dnconfig :
+
+ + save the name of the last downloaded configuration in file :
+ 			"~/usr/etc/lrr/dnconfig_last"
+
+- shell command openssh :
+
+ + add option -K to remove "${HOME}/.ssh/known_hosts" before starting ssh
+
+ + add option -A addr to change the default host address (support1.actility.com)
+
+ + add option -D port to change the default host port (81)
+
+- add --ini option to lrr.x to parse ini files only
+lrr.x --ini
+
+- add --lap option to lrr.x to start embeded tests on TCP/IEC link to lrc1 and 
+lrc2 using only TestFrAct/TestFrCon
+
+TestFrAct periodicity : 3s.
+The test will automaticaly exit after 12h.
+
+Output :
+lrc=addr frameUcount,average,deviation,average+deviation,max
+
+Compute :
+each 180s compute data on samples less than 300s old.
+
+lrr.x --lap
+
+- xlap :
+
+ + keep timestamp for last TestFrAct frame sent
+ + reset lk_tFrmSndAt timestamp on disc
+
+
+
+###############################################################################
+1.4.15	2015/08/12
+###############################################################################
+
+- the default value for IEC T1 timer is now 60s (old 15) ~/lrr/config/lrr.ini:
+
+[laplrc:X]
+	iec104t1=60
+
+###############################################################################
+1.4.14	2015/07/09
+###############################################################################
+
+- multitech support
+
+
+###############################################################################
+1.4.13	2015/05/26
+###############################################################################
+
+Do not use this version number
+
+###############################################################################
+1.4.12	2015/05/21
+###############################################################################
+
+- add support for Foxconn MLB device
+
+- add configrefresh command to force LRR to send its configuration to TWA.
+  NFR89
+
+- add the LRR/RFF version and date/RFF to t_lrr_config and then LRR_config xml.
+ Infos are read from "usr/etc/lrr/saverff_done".
+
+- ip interface may not exist at launch time
+
+- add "lockrff.sh" and "unlockrff.sh" commands
+
+- if no connection to LRCs can be established during more than 4 hours the lrr
+ process reboots the LRR. The timer can be set with [lrr].autoreboottimer.
+	autoreboot=14400
+ if 0 the feature is disabled. (Can not be less than 60 sec)
+ 
+ An auto reboot counter is saved in the file :
+ 	"~/usr/data/lrr/autorebootcnt.txt"
+
+ Kerlink/Wirmav2 only :
+
+  if the auto reboot count is greater than 12, the lrr process removes the
+  auto reboot counter file and launches an execrff.sh. The execrff does not use
+  force option, so if "usr/etc/lrr/execrff_locked" exists or if no RFF has been
+  saved this has no effect.
+
+- it is possible to do not start radio (thread) when launching : lab only !!!
+	[lrr].radiostopped=1
+
+- add shell commands "radiooff.sh" & "radioon.sh" to power off or on radio board
+ (Kerlink only : use modem_off.sh & modem_on.sh)
+
+- add shell command "radiopower.sh" to power off/on radio board
+ (Kerlink only : use modem_off.sh & modem_on.sh)
+
+- if radio start fails more than 10 consecutive times, the lrr process tries
+ to execute the shell "radiopower.sh" to power off then power on the radio board
+ This shell can also be call via shell commands.
+ (Kerlink only : use modem_off.sh & modem_on.sh)
+
+- try to open /dev/nmea several times until success
+
+- add 3 sec delay between stop and start for service lrr restart
+
+- built-in commands are also save in command history; so it is possible now 
+to use cmdstatus & cmdresult on them.
+Limitation on cmdresult : only the last line of the command is kept in the file 
+usr/data/lrr/cmd_shells/xx.log
+
+- a separate thread is created to clear old commands in usr/data/lrr/cmd_shells
+
+- add a shell command netinfo (ifconfig+route+/etc/resolv.conf)
+
+- add a shell command showconfig (lrr.x --config)
+
+- wirmav2/saverff.sh : produce a date in a more usual format
+	2015-05-20T16:51:49+0200
+	2015-05-20T16:51:49.0+02:00
+
+- ifacefailover :
+
+	- system wirmav2 only
+	- script in ~/lrr/com/shells/wirmav2/ifacefailover.sh (+x)
+	- default configuration from lrr/config/lrr.ini or usr/etc/lrr/lrr.ini :
+
+	[ifacefailover]
+		enable=1
+		routes="lrc1.thingpark.com lrc2.thingpark.com"
+		urls="http://lrc1.thingpark.com http://lrc2.thingpark.com"
+		successcount=1
+		newkey=xxxxx
+
+	if ifacefailover.enable != 0
+		+ all keys of section "ifacefailover" are exported to file:
+		 "~/usr/data/ifacefailover.cfg" with an upper case conversion,
+		 values are quoted ("").
+		  ENABLE="1"
+		  ROUTES="lrc1.thingpark.com lrc2.thingpark.com"
+		  URLS="http://lrc1.thingpark.com http://lrc2.thingpark.com"
+		  SUCCESSCOUNT="1"
+		  NEWKEY="xxxxx"
+
+		+ the shell script is started with system(3C) by the lrr process
+
+		+ stdout & stderr are redirected to var/log/lrr/IFACEDAEMON.log
+
+		+ when lrr process stops a "killall ifacefailover.sh" is done
+
+
+###############################################################################
+1.4.11	2015/04/20
+###############################################################################
+
+Do not use this version number
+
+###############################################################################
+1.4.10	2015/04/20
+###############################################################################
+
+
+- shell command upgrade.sh is now specific to ir910 and supports opk packages
+it is mandatory to use -p password_for_clish option to get admin privileges
+
+- the lrr process corrects itself the wakeup delay for downlink message :
+	#define               TX_START_DELAY          1500
+ should only be used with lib semtech <= 1.6.0
+
+- commands shells are now in ~/lrr/com/cmd_shells
+
+- commands depending on system are in ~/lrr/com/cmd_shells/$SYSTEM
+
+- custom commands shells are now in ~/usr/etc/lrr/cmd_shells
+
+- add builtin commands for "shells commands" :
+
+	version		=> 
+	"a.b.c"
+
+	versions	=> 
+	"@(#) Actility lrr 1.4.10 17/04/15 target=wirmav2 host=pca-ESPRIMO-P5730
+	Version: 1.6.0; Options: native sx1301 sx1257 full kerlink_868 private;"
+
+	stop [delay]	=> 
+	"restart pending (5sec)"
+		delay can be later than 5 seconds (default is 5)
+
+	uptimesyst	=> 
+	"2015-03-24T16:26:24.241+01:00"
+
+	uptimeproc	=> 
+	"2015-03-24T16:26:24.241+01:00"
+
+	radiostatus	=> 
+	"stopped" | "downstopped" | "started"
+
+	radiostop	=> 
+	"already stopped" | "stopped"
+
+	radiostart	=> 
+	"already started" | "started"
+
+	dnradiostop	=> 
+	"already stopped" | "already downstopped" | "downstopped"
+
+	dnradiostart	=> 
+	"already stopped" | "already downstarted" | "downstarted"
+
+	countopenssh	=>
+	"<count_of_reverse_ssh_opened>"
+
+	countcmdthread	=>
+	"<count_of_thread_command_pending>"
+
+	cmdstatus cmdserial	=>
+	"" | "<exit_code_of_command>"
+		code=255	parameter cmdserial missing
+		code=1		command still in progress
+		code=2		command not found
+		code=0		command terminated and the exit code is in the
+				body
+
+	cmdresult cmdserial	=>
+	"" | "<result_of_command>"
+		code=255	parameter cmdserial missing
+		code=1		command still in progress
+		code=2		command not found
+		code=3		command has no result
+		code=0		command terminated and the result is in the body
+
+- real "shell commands" : these commands use system(3C) or popen(3C) to create
+an external /bin/sh process to execute shell scripts; depending on the execution
+mode the shell process is executed via a thread of the lrr process.
+
++ execution modes :
+	++ CMD_SYSTEM_DETACH (command ended with &) : system(3C) in background;
+	this is the default (and old) mode. 
+	It is not possible to retrieve the exit code and the result of the shell
+	with cmdstatus & cmdresult but the result of the command is saved in 
+	~var/log/lrr/SHELL.log or ~var/log/lrr/UPGRADE.log 
+
+	++ CMD_SYSTEM_PENDING_THREAD (command ended with ;) : thread+system(3C);
+	if the thread and the system(3C) can be started the return is immediate
+	and the execution of the shell is asynchronous and the end of the shell
+	is not signaled to the caller.
+	It is possible to supervise the command with cmdstatus & cmdresult 
+	during 3600s even if the process is restarted or the system is rebooted.
+
+	++ CMD_SYSTEM_THREAD (command ended with !) : thread+system(3C), if the
+	thread and the system(3C) can be started the execution of the shell 
+	script is synchronous, exit code is sent to the caller when the command
+	is terminated.
+	It is not possible to use cmdstatus & cmdresult but the result of the 
+	command is saved in ~var/log/lrr/SHELL.log or ~var/log/lrr/UPGRADE.log
+
+	++ CMD_POPEN_THREAD (command ended with ?) : thread+popen(3C), if the
+	thread and the popen(3C) can be started the execution of the shell 
+	script is synchronous, results and exit code are sent to the caller as 
+	they are produced by the shell script. If the number of result lines
+	exceeds 50, the thread is slowed.
+	It is not possible to use cmdstatus & cmdresult.
+
+- dynamic calibration:
+	To prevent specific executable for each ISM band for Cisco, modifications
+	were done in lrr and libloragw.
+	lrr: add semtech.c file, and call to setBoardCalibration() function in
+		lgw_x1.c, just before calling lgw_start()
+	libloragw: move some define from src/loragw_hal.c to inc/loragw_hal.h
+		cf. lora_gateway git repository on srvlyon for details
+
+
+###############################################################################
+1.4.5	2015/03/23
+###############################################################################
+
+- NFR 33 :
+
+for wirmav2 only:
+
+	- removed "@@@" command from support login (command to gain root access)
+	- removed "chmod u+s /bin/su" from sysconfiglrr.sh and _afterupgrade.sh
+
+###############################################################################
+1.4.4	2015/03/20
+###############################################################################
+
+- NFR 27 :
+
+-- mounted file systems configuration
+
+for wirmav2 :
+
+	[wirmav2/mfs:0]
+		enable=1
+		name=/
+		type=r				; type root
+	[wirmav2/mfs:1]
+		enable=1
+		name=/mnt/fsuser-1
+		type=u				; type "user"
+	[wirmav2/mfs:2]
+		enable=1
+		name=/tmp
+		type=t				; type tmp
+	[wirmav2/mfs:3]
+		enable=1
+		name=/mnt/mmcblk0p1
+		type=B				; type Backup
+
+for natrbpi :
+
+	[natrbpi/mfs:0]
+		enable=1
+		name=/
+		type=r				; type root
+	[natrbpi/mfs:1]
+		enable=1
+		name=/boot
+		type=b				; type boot
+
+
+-- add memory / cpu / disk / gps usages to stat reports
+
+- NFR 33 :
+
+for wirmav2 only :
+
+	add support account with specific login suplog.x
+	with this login it is possible to:
+	- visualize/tail/grep on log files
+	- export configuration and log files via ftp
+	- view system state (ifconfig, route, top, df)
+
+	impact on root filesystem
+	- /etc/password modified to add support account
+	- /etc/shells created to autorize suplog.x to be a login shell
+
+###############################################################################
+1.4.3	2015/03/04
+###############################################################################
+
+- add us915 channels defintion "channels_us915.ini"
+
+ Full us915 is not delivered for board configuration lgw[|x8]_us915.ini because
+ can not work on a x1 board and not tested on x8 board.
+
+- add us915h8 channels definition "channels_us915h8.ini" which is a strict copy
+ of "channels_us915.ini" for hybride mode with only 8 uplink channels.
+
+- add us915h8 x1 board configuration "lgw_us915h8.ini" hybride mode with only 8
+uplink channels : 
+	902300000	LC0
+	902500000	LC1
+	902700000	LC2
+	902900000	LC3
+	903100000	LC4
+	903300000	LC5
+	903500000	LC6
+	903700000	LC7
+
+- add a key [ism].bandlocal to limit the frequencies really used in a [ism].band
+definition. For example, to use only the first 8 channels defined by "us915" :
+
+	[ism]
+		band=us915
+		bandlocal=us915h8
+
+- us915 mode ([ism].band=us915) downlink channel conversion is done :
+
+	downlink = (uplink % 8) + 127
+
+- add shell commands "saverff.sh" & "execrff.sh" (NFR 23)
+	- saverff.sh : to create a tar backup of the whole LRR environment
+	and all user/group UNIX account. Target actility "support account" with
+	special and restricted rights/commands.
+	The tar is created and saved in the rescue partition (/dev/mtdblock4).
+	Actualy this command can not be executed from a interactive shell.
+	This command reboots the whole system.
+
+	- execrff.sh : to restore the root file system & the last tar added
+	by saverff.sh.
+
+	- For security reasons these 2 commands require to repeat the LRRID with
+	-L option :
+
+	From LRC :
+
+	lrr shell 29000155 saverff -L 29000155
+	lrr shell 29000155 execrff -L 29000155
+
+
+###############################################################################
+1.4.2	2015/03/02
+###############################################################################
+
+- it is forbidden to do an upgrade with LRR 1.4.2 on LRR less (<) LRR 1.2.11.
+ All LRR 1.0.x and <= 1.2.10 must be upgraded to 1.2.11 before 1.4.x
+
+- the shell after install "_afterupgrade.sh" is now :
+	- always add to tarball
+	- search in ./lrr/com 
+	- started with variables ${CURRENTVERSION} & ${VERSION}
+
+- lrr/com/upgrade.sh reread lrr/com/_parameters.sh & usr/etc/lrr/_parameters.sh
+in case of use of "_afterupgrade.sh"; this will be usefull after upgrade from
+1.2.x to 1.4.x where the launch processus changes
+
+
+- new options to sysconfiglrr.sh :
+	-m usb | spi
+	-x x1 | x8
+
+- new launch on wirmav2 using /etc/init.d 
+
+###############################################################################
+1.4.1	2015/02/24
+###############################################################################
+
+- now support raspbian 7.6/8.0 and IMST board in USB mode, this system is always
+called "natrbpi" and continues to support SPI board with 8 x SX1301
+
+- new sysconfiglrr.sh :
+	serial communication mode : usb | spi
+ and
+	number of SX1301 on radio board : x1 | x8
+
+ must be defined during installation procedure
+
+- new system to start/stop the LRR process with /etc/init.d/lrr [start|stop],
+the final location of the command depend on the OS :
+	natrbpi :	/etc/init.d
+	ir910 :		/mnt/apps/etc/init.d
+	wirmav2 :
+
+- recommended installation directory ($ROOTACT) is :
+	natrbpi :	/home/actility
+	ir910 :		/mnt/apps/actility
+	wirmav2 :	/mnt/fsuser-1/actility
+
+- installation must be done as root
+
+- multi compilations depending on :
+	OS : wirmav2 | natrbpi | ir910
+	serial communication mode : usb | spi
+	number of SX1301 on radio board : x1 | x8
+
+ all possible executable are delivered
+ 
+-  ~/lrr/com/lrr.x is now just a launcher, infos are get from _parameters.sh to
+find the right executable to start. launcher also set the following variable in
+process environment :
+	- SERIALMODE
+	- BOARDTYPE
+	- INIT_RUNL
+	- SERVICELRR
+
+- initlrr.sh is no more used for fresh install, see lrrservice.sh:preStart()
+
+- the following commands are no more delivered :
+	lrr/com/stopong.sh
+	lrr/com/startong.sh
+	lrr/com/stoplrr.sh
+	lrr/com/startlrr.sh
+	lrr/com/startlrr_pending.sh
+
+###############################################################################
+1.2.11	2015/02/18
+###############################################################################
+
+- semtech liblora 1.6.0 : libloragw/src/loragw_spi.ftdi.c:lgw_spi_open()
+  This function now tries to open PID_1 (0x6010) then PID_2 (0x6014).
+  Mandatory for raspberry in USB mode because the FT2232H is 0x6014.
+	
+
+- shelllrr.sh reads _parameters.sh & _functions.sh before launching sub shells.
+it also set/export $SYSTEM to $LRRSYSTEM if not set.
+
+- openssh.sh :
+	-o StrictHostKeyChecking=no is not available on wirmav2
+	-Itmt is only available on wirmav2
+
+###############################################################################
+1.2.10	2015/02/10
+###############################################################################
+
+- add a configuration file for manual/static GPS configuration only search in 
+usr/etc/lrr : "gpsman.ini"
+
+	[lrr]
+		usegpsposition=0
+		lat=0.0			;	ex : lat=40.742510
+		lon=0.0			; 	ex : lon=3.774123
+		alt=0			;	altitude meter
+
+This configuration overloads the configuration of "lrr.ini"
+
+- add a new shell command to force the GPS location
+
+	gpsman -LAT 2.0 -LON -3.0 -ALT 1000
+
+The lrr process is restarted.
+
+- add a new shell command to reboot the box
+
+	reboot
+		
+
+- shell commands are now searched in $ROOTACT/usr/etc/lrr_shell first and if
+not found in $ROOTACT/lrr/com.
+
+###############################################################################
+1.2.9	2015/02/06
+###############################################################################
+
+- SYSTEM can be : wirmav2, natrbpi, ir910 (same ~/rtbase/SYSTEM)
+
+- on shell execution LRRSYSTEM is added to environment
+
+- add -S system option to upgrade.sh to force the system name 
+
+- change high TCP keep alive default values for active LRC :
+	[tcp]
+		tcpkeepalive=1
+		tcpkeepidle=5
+		tcpkeepintvl=5
+		tcpkeepcnt=20
+
+
+
+###############################################################################
+1.2.8	2015/01/31
+###############################################################################
+
+- add package version and ism band used in t_lrr_capab LP_TYPE_LRR_INF_CAPAB
+
+- logical channels from 1 to 255 , 0 not used
+
+- on IR910 LRRID is based on the last 4 bytes of the MAC @ used by itf ge1
+
+###############################################################################
+1.2.7	2015/01/27
+###############################################################################
+
+- add a delay of 10s between reports to TPWA
+
+- LRR_wan xml doc for TPWA with 2 messages types :
+	+ LP_TYPE_LRR_INF_WAN		(t_lrr_wan)
+	+ LP_TYPE_LRR_INF_WAN_LRC	(t_lrr_wan_lrc)
+
+- add commands "dnradiostop" "dnradiostart" to stop/start downlink radio
+
+- add commands "radiostop" "radiostart" to fully stop/start radio module
+ The radiostart will reload configuration.
+
+
+- add a key "[ism].band" to lrr.ini file to select the correct logical channels
+file definition and semtech boards configuration in the default configuration
+directory (~/lrr/config).
+
+if [ism].band=xxx the loaded file are :
+	- ~/lrr/config/channels_xxx.ini
+	- ~/lrr/config/lgw_xxx.ini or ~/lrr/config/lgwx8_xxx.ini
+
+There are actualy only 2 ISM bands definitions : eu868 and sg920 (Singapour).
+The default value is "eu868", this means that "channels.ini" "lgw[x8].ini" are
+no more used no more delivered and replaced by :
+	-  ~/lrr/config/channels_eu868.ini
+	-  ~/lrr/config/channels_sg920.ini
+	-  ~/lrr/config/lgw_eu868.ini
+	-  ~/lrr/config/lgw_sg920.ini
+	-  ~/lrr/config/lgwx8_eu868.ini
+	-  ~/lrr/config/lgwx8_sg920.ini
+
+Note that custom files in ~/usr/etc/lrr do not require/use ism band suffix.
+
+- dnconfig.sh to download configuration files archive, same behaviour as 
+upgrade.sh. 
+
+ -C configname		// name of the file to download
+ -M md5_file		// the md5 of the file to download
+ -A ftp_address		// default lrc1.lyon.actility.com
+ -P ftp_port		// default 21
+ -U ftp_user		// default ftp
+ -W ftp_password	// default <empty>
+ -R 			// extract tar from $ROOTACT
+ -F 0|1			// forced mode default 0
+ 			// forced mode 1 no check ~/usr/etc/lrr/dnconfig_locked
+
+Download file is "cfglrr-${configname}.tar.gz" , if -C is not used download file
+is "cfglrr-${LRRID}.tar.gz".
+
+It is assumed that the tar archives contains only files relative to the custom
+directory "~/usr/etc/lrr", in other words it is extracted from "~/usr/etc/lrr".
+
+It is possible to extract from $ROOTACT using -R option. Not recommended.
+Of course in this case, the tar archive must contain the correct files tree.
+
+- for upgrade.sh and dnconfig.sh if -M md5 is not given, the LRR tries to
+download a file .md5 (same name as file to download) and get the md5 string
+from this .md5 file content.
+
+	cfglrr-${LRRID}.tar.gz		=> cfglrr-${LRRID}.md5
+	lrr-${VERSION}-${SYSTEM}.tar.gz	=> lrr-${VERSION}-${SYSTEM}.md5
+
+- add sections to lrr.ini to define system dependent paramters such as linux
+network interfaces names, spidev device, file systems to monitor ...
+
+	[wirmav2]
+	[raspberrypi]
+	[ir910]
+
+actualy used for network linux interfaces :
+	[wirmav2/netitf:0]
+		enable=1
+		name=eth0
+		type=0
+	[wirmav2/netitf:1]
+		enable=1
+		name=ppp0
+		type=1
+
+- LRR_wan for TPWA with 2 messages types :
+	+ LP_TYPE_LRR_INF_WAN		(t_lrr_wan)
+	+ LP_TYPE_LRR_INF_WAN_LRC	(t_lrr_wan_lrc)
+
+- round trip delay mean and standard deviation are now computed :
+	- on the last 1024 samples; samples older than 600 seconds are dropped
+	- by LRC link
+
+Computation time : 0.02 ms per call to AvDvUiCompute()
+
+
+###############################################################################
+1.2.5	2014/12/19
+###############################################################################
+
+- the clock for reporting to LRC/TPWA starts only when at least one link on LRC
+has started. By this way the first messages(LRR_sys,LRR_config,...) should not 
+be lost when LRR is started.
+
+###############################################################################
+1.2.4	2014/12/14
+###############################################################################
+
+- when LRR changes the spfact of a downlink packet the time on air must be 
+recomputed.
+
+- when we have more than 100ms to send a downlink packet (delay vs trip) the
+packet is postponed in the mainQ.
+
+- LRR now reports the list of LRC configured (LP_TYPE_LRR_INF_CONFIG_LRC)
+
+- LRR now reports the list of IP interfaces configured (LP_TYPE_LRR_INF_CONFIG)
+
+- LRR now reports altitude : static or GPS
+
+- change precision to resent GPS infos in case of changes : Lat/Lon > 0.0005 or
+altitude > 10m
+
+###############################################################################
+1.2.3	2014/12/03
+###############################################################################
+
+- the search for logical channels is now based on sorted table of frequencies
+with possible duplicate values
+
+- on shell execution LRRPID and LRRID are added to environment
+
+- add a shell dnconfig.sh to download configuration files archive, same 
+behaviour as upgrade.sh. Search file is : "cfglrr-${LRRID}.tar.gz"
+
+ -M md5_file		// the md5 of the file to download
+ -A ftp_address		// default lrc1.lyon.actility.com
+ -P ftp_port		// default 21
+ -U ftp_user		// default ftp
+ -W ftp_password	// default <empty>
+ -F 0|1			// forced mode default 0
+ 			// forced mode 1 no check ~/usr/etc/lrr/dnconfig_locked
+
+
+
+- add a shell upconfig.sh to upload configuration file archive via ssh/scp
+
+ -A scp_address		// default lrc1.lyon.actility.com
+ -P scp_port		// default 22
+ -U scp_user		// default ftp
+ -W scp_password	// default <empty>
+
+###############################################################################
+1.2.2	2014/12/02
+###############################################################################
+
+- sysconfiglrr.sh tries to find the host target with uname -a
+ only 2 systems supported : 
+ 	wirgrid/wirmav2		=> wirmav2
+	raspberry		=> natrbpi
+
+the result is saved in usr/etc/lrr/_parameters.sh:SYSTEM=xxxxxxx
+  
+- upgrade.sh now uses $SYSTEM to get the tar file from LRC
+
+- upgrade.sh now uses wget instead of ftpget and default values for wget are
+	PORT=21
+	LRC=lrc1.thingpark.com
+
+
+
+###############################################################################
+1.2.1	2014/11/25
+###############################################################################
+
+- on raspberry, the LRR ID is based on CPU serial number :
+
+	grep Serial /proc/cpuinfo => Serial : 00000000ab706ee8 => 0xab706ee8
+
+
+- in some lrr/com/*.sh shells : if [ x == y ] replace by if [ x = y ] 
+
+
+###############################################################################
+1.2.0	2014/11/25
+###############################################################################
+
+
+0) Defaut value for private/public network is now : public
+
+A) software support of 9XX MHz frequencies on kerlink (SX1301 x 1)
+
+!!!! This is only a software support because common kerlink boxes have hardware
+!!!! filters not suitable with US frequencies. Some boxes are patched.
+!!!! SNR & RSSI are poor : for labs only.
+
+- semtech liblora 1.6.0 compiled with "CFG_BAND= full", this means eu868+us915
+with sx1257 covering ~~ 860-1000 MHz
+
+To use 920.9 to 923.4, we have to suppress controls in semtech liblora 1.6.0 :
+
+	src/loragw_hal.c:lgw_rxif_setconf()
+	if ((conf.freq_hz + LGW_REF_BW/2)
+	if ((conf.freq_hz - LGW_REF_BW/2)
+
+
+- in "lgw.ini" and "channels.ini" the default values for :
+	"bandwidth" and "datarate" and "modulation"
+are
+	${BW_125KHZ} and ${DR_LORA_MULTI} and ${MOD_LORA}
+
+
+B) software & hardware support of SX1301 x 8 on raspberry pi
+
+
+###############################################################################
+1.0.63	2014/11/19
+###############################################################################
+
+- ~lrr/mac802154 is no more used
+
+- full lib6lowpan (...) library for loramac header decoding is no more used
+
+- all lrr/com/*.sh use . rather than source
+
+- split lgw.c to lgw_gen.c (generic) and lgw_x1.c (sx1301 X 1)
+
+- config/defines.ini
+
+	IF_LORA_STD	no more used
+	IF_LORA_MULTI	no more used
+	IF_FSK_STD	no more used
+	MOD_GFSK	no more used
+	IMMEDIATE	no more used
+
+	because values below can change from a version to another :
+	MOD_LORA	always redefined by the soft
+	MOD_FSK		always redefined by the soft
+	DR_LORA_*	always redefined by the soft
+	BW_*KHZ		always redefined by the soft
+	CR_LORA_*	always redefined by the soft
+
+###############################################################################
+1.0.62	2014/11/18
+###############################################################################
+
+- some changes in all lrr/com/*.sh to accept installation in $ROOTACT
+
+for BT KERLINK the prefered $ROOTACT is always /mnt/fsuser-1/actility
+
+
+###############################################################################
+1.0.61	2014/11/14
+###############################################################################
+
+- move low level defines from "lrr.ini" & "lgw.ini" to "defines.ini"
+
+- semtech liblora 1.5.0 => 1.6.0
+
+- the new recommended value of sync word for loramac V0.3 is :
+
+		[gen]
+			syncword=0x34	; hexa decimal format mandatory
+
+
+for old environment
+
+		[gen]
+			syncword=0x12	; hexa decimal format mandatory
+
+
+	+---------------------------------+
+	| 0x12 is still the default value |
+	+---------------------------------+
+
+
+Behaviour found for the sync word :
+
+	if 0x12 : 
+		sensors with 0x12 are heard and lrr can speak to them 
+		sensors with 0x34 are heard and lrr can not speak to them 
+
+	if 0x34 : 
+		sensors with 0x12 are not heard
+		sensors with 0x34 are heard and lrr can speak to them 
+
+
+- it is now possible to configure the channel used for RX2 in "channels.ini"
+with "usedforrx2" and "dataraterx2" keys :
+
+	[channel:7]
+	        name=LC6
+	        subband=3
+	        freqhz=869.525
+	        modulation=${MOD_LORA}
+	        bandwidth=${BW_125KHZ}
+	        datarate=${DR_LORA_MULTI}
+	        usedforrx2=1
+	        dataraterx2=${DR_LORA_SF9}
+
+
+The "usedforrx2" channel is actualy used in these cases :
+	- the LRR decides itself to use RX2 window because the RX1 is already
+	exceeded due to IP round trip
+	- the LRC sends a packet for a permanent listening device but says the
+	channel to use is unknown (channel=255)
+	- the LRC directly uses the RX2 window but says the channel to use is 
+	unknown (channel=255)
+	- of course, it continues to be used as a channel like other if the LRC
+	directly adresses it
+
+	The first three cases apply only for LORAMAC major=0&minor>=3
+
+- the LRR is now protected against DNS temporary errors :
+
+	- each time a DNS request is successfull, the response is saved in the
+	XLAP context (struct addrinfo + struct sockaddr).
+
+	- each time the LRR tries to connect to a LRC, if the DNS request fails
+	the saved DNS response is reused.
+
+
+
+###############################################################################
+1.0.60	2014/10/31
+###############################################################################
+
+- second window for LORAMAC major=0&minor>=3 (and so watteco v3.2 on loramac) :
+	if we miss the first window :
+		- delay +1000
+		- send packet on SF9/869.525
+
+- the LRR no more tries to use the second window if the LRC signals the packet
+is already for the second window (downpkt->lp_flag&LP_RADIO_PKT_RX2).
+
+
+
+- it is possible to configure the TX power channel by channel in "channels.ini"
+
+	[channel:X]
+		power=newpower
+
+	if the attribut is not set   : [channel:X].power=[gen].power
+	if the attribut is +newpower : [channel:X].power=[gen].power + newpower
+	if the attribut is -newpower : [channel:X].power=[gen].power - newpower
+	if the attribut is newpower  : [channel:X].power=newpower
+
+- if a downlink packet comes with delay==0 (Device PermanentlyListening) and if
+a packet is yet scheduled, the new packet is delayed.
+
+- add configuration info LP_TYPE_LRR_INF_CONFIG at [lrr].configrefresh period
+
+	[lrr]
+		configrefresh=86400	// one day / 24H
+
+###############################################################################
+1.0.59	2014/10/23
+###############################################################################
+
+- significant change in configuration loading :
+
+	1) for each configuration file (lrr.ini,lgw.ini,channels.ini) :
+		- load file from ~/lrr/config (default configuration)
+		if the file does not exist OR can not be parsed => process exit
+	AND
+		- load file from ~/usr/etc/lrr (custom configuration)
+		if the file exists AND can not be parsed => process exit
+
+
+	By this way you can overload default values one by one without fully
+	copying the default file.
+
+	Example : if you only want to set manualy GPS location in lrr.ini and
+	keep all other default values unchanged, just create lrr.ini in
+	~/usr/etc/lrr/ and add :
+		[lrr]
+	        	usegpsposition=0
+		        lat=45.848351
+		        lon=4.779130
+		
+
+	Example : if you only want to change the TX power of a LRR, just
+	create ~/usr/etc/lrr/lgw.ini file and add :
+		[gen]
+		        power=10
+
+
+	2) The LRR overwrites LORAMAC sync word using SX13xx registers :
+
+		LGW_FRAME_SYNCH_PEAK1_POS
+		LGW_FRAME_SYNCH_PEAK2_POS
+		LGW_MBWSSF_FRAME_SYNCH_PEAK1_POS
+		LGW_MBWSSF_FRAME_SYNCH_PEAK2_POS
+		LGW_TX_FRAME_SYNCH_PEAK1_POS
+		LGW_TX_FRAME_SYNCH_PEAK2_POS
+
+	the default value is 0x12 as for the semtech "lib loragateway"
+
+	This value can be changed with :
+
+		[gen]
+			syncword=0x34	; hexa decimal format
+
+	0x34 is the recommended value for public LRR
+
+
+	See : lrr/com/lgw.c:LgwRegister()
+	
+
+- add report info LP_TYPE_LRR_INF_RFCELL at [lrr].rfcellrefresh period
+
+	[lrr]
+		rfcellrefresh=300
+
+###############################################################################
+1.0.58	2014/10/05
+###############################################################################
+
+- in case of switch of LRC link , restore tcpkeepalive HIGH on new link
+ and restore tcpkeepalive LOW on others links rather than stopping keepalive.
+
+ 	[tcp]
+		tcpkeepalivelow=1
+		tcpkeepidlelow=5
+		tcpkeepintvllow=30
+		tcpkeepcntlow=3
+
+###############################################################################
+1.0.57	2014/10/01
+###############################################################################
+
+- add redundancy for LRC links, the new default configuration for LRC links is :
+
+;	number of LRC to use [1..3] in [laplrc:x] list
+;
+	nblrc=2
+
+;	redundancy mode [0|1] , activated only if nblrc >=2
+;	0 : 
+;	- the LRR is selected in priority order from [laplrc:x] list
+;	1 :
+;	- the LRR is selected in round robin mode from [laplrc:x] list
+;	0 & 1 :
+;	- if not connected (TCP) or not STARTED (IEC104), the next LRR is chosen
+;	- support links STOPPED (IEC104) by LRC (this is not a LRR decision)
+;	- try to maintain all links connected (TCP)
+;	- period of TCP tries is proportional to the number of LRC connected
+;	0 : 
+;	- in case of switch of LRC link , restore tcpkeepalive on new link
+;	  reset tcpkeepalive on others links
+;
+	redundancy=0
+
+[laplrc:0]
+        addr=lrc1.thingpark.com
+        port=2404
+        type=${LK_TCP_CLIENT}|${LK_SSP_SLAVE}|${LK_SSP_RECONN}|${LK_TCP_NONBLK}
+        
+[laplrc:1]
+        addr=lrc2.thingpark.com
+        port=2404
+        type=${LK_TCP_CLIENT}|${LK_SSP_SLAVE}|${LK_SSP_RECONN}|${LK_TCP_NONBLK}
+
+- as it is absolutely unnecessary and detrimental to have the same custom 
+configuration as the default configuration, default .ini files are no more 
+copied from ~/lrr/config to ~/usr/etc/lrr during installation.
+If you need to made some changes to configuration copy files yourself.
+
+- add a shell to remove custom configuration files :
+	rmcustomcfg [file1 .. fileN]
+	if no file given all files are removed
+	
+
+###############################################################################
+1.0.56	2014/09/28
+###############################################################################
+
+
+- add a shell to open a reverse ssh via the LRx shell protocol
+	openssh :
+		-P required_port	// default 2009
+		-I max_duration		// default 3600 sec
+
+- add a shell to close reverse ssh via the LRx shell protocol
+	closessh
+
+- nohup ong start/stop in startong.sh and stopong.sh to avoid signal 15
+
+- use TCP_QUICKACK on xlap sockets, both server and client side.
+
+- upgrade.sh : move downloaded upgrade package files to SDCARD directory :
+		/mnt/mmcblk0p1/actility/packages
+
+- stoplrr.sh : now start a sub shell startlrr_pending.sh to :
+	- restore /etc/inittab file with lrr activated
+	- restart lrr one hour later
+
+ Even in case of crash the lrr will be restarted ...
+
+###############################################################################
+1.0.55	2014/09/24
+###############################################################################
+
+
+- to avoid supposed PDP context reset on xlap tcp sockets lrr process set 
+	TCP_KEEPALIVE=1
+	TCP_KEEPIDLE=5
+	TCP_KEEPINTVL=5
+	TCP_KEEPCNT=3
+
+ when the socket becomes connected.
+
+ These default values can be changed in lrr.ini
+
+ 	[tcp]
+		tcpkeepalive=1
+		tcpkeepidle=5
+		tcpkeepintvl=5
+		tcpkeepcnt=3
+
+
+- add a LRC/LRR protocol SHELL_CMD to execute shells placed in ~/lrr/com
+see ~/lrr/com/shelllrr.sh which is a frontend of the other shells.
+it is not possible to start and stop LRR itself
+
+- add [laplrc].iec104t3 to change the default value of the IEC104 T3 timer.
+
+	default value for IEC104 is 20
+	default value for LRR is 20
+
+###############################################################################
+1.0.54	2014/09/21
+###############################################################################
+
+- use TCP_NODELAY on xlap sockets, both server and client side.
+
+###############################################################################
+1.0.53	2014/09/14
+###############################################################################
+
+- do not try second window for 802154 packets
+
+###############################################################################
+1.0.52	2014/09/05
+###############################################################################
+
+- add shell commands to stop and start lrr.x process. This is done by modifing
+the file /etc/inittab (add or delete a # before the line lrr) and by calling
+kill -HUP 1. Obviously the lrr package must have been installed AND configured.
+
+	~/lrr/com/stoplrr.sh
+	~/lrr/com/startlrr.sh
+
+- RSSI scanner sources files from semtech are integrated in lrr project.
+The executable is delivered in :
+
+	~/lrr/util_rssi_histogram/util_rssi_histogram
+
+If you use this scanner you have to stop lrr process before : stoplrr.sh and
+do not forget to restart it with : startlrr.sh
+
+
+###############################################################################
+1.0.51	2014/08/29
+###############################################################################
+
+- lgw.ini : the default value for [gen].power is 14
+
+- lrr.ini : the default value for [lrr].usegpstime is 0
+
+- the default hardcoded LgwPower is 14
+
+- the default hardcoded UseGpsTime is 0
+
+- if an error occurs while reading pseudo-tty GPS UseGpsTime is forced to 0 and 
+the GPS will not be reused.
+
+- the upgrade.sh command for automatic upgrades accepts more parameters :
+
+ -V requested_version	// 1.2.3
+ -M md5_file		// the md5 of the file to download
+ -A ftp_address		// default lrc1.lyon.actility.com
+ -P ftp_port		// default 2121
+ -U ftp_user		// default ftp
+ -W ftp_password	// default <empty>
+ -F 0|1|2		// forced mode default 0
+ 			// forced mode 1 no check current version ~/lrr/Version
+ 			// forced mode 2 no check ~/usr/etc/lrr/upgrade_locked
+			
+
+ the previous format is always accepted
+
+ 	upgrade.sh 1.2.3 xxxxxxxxxx <=> upgrade.sh -V 1.2.3 -M xxxxxxxxxx
+
+
+- add a new command LP_TYPE_LRR_INF_UPGRADE_V1 in LRx protocole to support the 
+new upgrade parameters for batch upgrades	// not fully available
+
+- add a new command LP_TYPE_LRR_INF_UPGRADE_CMD in LRx protocole to support the 
+new upgrade parameters for interactive upgrade from LRC.
+ex :
+lrr upgrade 08020016 -F 1 -V 1.0.51 -M 7c0686aedfb1164dadf6a5317c75649b -A lrc -P 21 -U ftp
+
+- add a new command LP_TYPE_LRR_INF_RESTART_CMD in LRx protocole to restart the
+lrr.x process via exit(3)
+
+###############################################################################
+1.0.50	2014/08/13
+###############################################################################
+
+- semtech liblora 1.3.0 => 1.5.0
+
+- default value for Tx power is restored to 20
+
+- sx1301 timers can be used without GPS connectivity. It is no more mandatory to
+set [lrr].usegpstime to 1 to use sx1301 delayed mode.
+	[lrr].uselgwtime=1 does not more forces [lrr].usegpstime=1
+
+- the lrr process tries to estimate when the TXSTATUS will become FREE based
+on time on air (+10%) + time delay requested to sx13. This improves the usage
+of the second window time.
+
+- the shell started after automatic upgrade does not more perform a reboot but 
+use killall lrr.x; sleep 2; killall -9 lrr.x
+
+	see lrr/com/upgrade.sh
+
+- LrcNbDisc is incremented only if LAP state is different than INIT, this
+gives more meaning to the counter : disconnection event rather connection fail.
+
+
+- to compile semtech code :
+	-- add #include <linux/types.h> to src/loragw_spi.native.c
+
+###############################################################################
+1.0.36	2014/06/29
+###############################################################################
+
+- because the sx13 TxStatus can stay blocking to SCHEDULED, there is no more
+control on it. The consequence is that some downlink packets can be discarded 
+before they are sent, but we do not have to restart the lrr process each hour.
+This version will probably not work with watteco.802154 sensors (not tested).
+
+- [lrr].lgwtime default value is 1
+
+- LRR now reports :
+ -- uptime of the lrr process
+ -- main configuration parameters (LrrUse*, LgwPower, ...)
+ -- package version
+
+ All these informations can be viewed on http://lrc1.lyon.actility.com:8808/
+ login=actility password=....
+
+- LRR can be automaticaly updated (package version) if the LRC requests it :
+ -- download the new package
+ -- do some verifications (md5sum, current version)
+ -- reboot
+ -- custom configuration files can be added to the package !
+ -- there is no restoration point in case of crash during upgrade ... this can
+ break the LRR package but not the Kerlink box itself.
+ -- see ~/lrr/com/upgrade.sh
+
+The default ftp server is ftp://lrc1.lyon.actility.com:2121, user=ftp pass="".
+
+It is possible to lock a version for a LRR by creating file :
+	/mnt/fsuser-1/actility/usr/etc/lrr/upgrade_locked
+
+
+
+###############################################################################
+1.0.35	2014/06/24
+###############################################################################
+
+- first version using the capability of the sx1301 to send delayed packets with
+  a great accuracy
+	[lrr].uselgwtime=1
+
+  -- [lrr].uselgwtime=1 forces [lrr].usegpstime=1 to set packet with GPS time
+  instead of LINUX time
+  -- this can work only with stable GPS signal
+  -- there is absolutely no management procedure collision for downlink delayed
+  packets (of course a programmed/delayed packet wins vs a new one, not tested)
+  -- this does not apply to packets with ACK+DATA flag (WATTECO/802.15.4) which
+  are always delayed by the LRR itself, so on the same LRR one can have LORAMAC 
+  and WATTECO/802.15.4 sensors (not tested).
+
+- installation script copies lgw.ini to custom config directory if not present
+
+- if [gen].power key is not present in lgw.ini (default & custom file), the
+  default value is 21. The [gen].power key is now commented in the default 
+  lgw.ini file.		// work around to Kerlink calibration problem
+
+- in some cases, for the LRR process it seems that a valid TCP connexion exists
+  at state STOPPED, but for the LRC there is no connexion at all. 
+  Because of non corrected bug in the XLAP/IEC104 stack, and once more in some 
+  cases only, the XLAP stack does not send keep alive frames.
+  Consequence : the LRR stay in the stable state STOPPED and no more packets are
+  sent to the LRC.
+  Work around : LRR application itself send a keep alive frame to LRC, no answer
+  will cause a DISC/TCP + try reconnect (tested).
+
+
+- size of t_lrr_pkt is now greater than static part of i_msg data, only use
+rtl_imsgDupData() for radio packets
+
+###############################################################################
+1.0.34	2014/06/06
+###############################################################################
+
+- sending procedure must stay blocking for ACK+DATA packet for WATTECO/802.15.4
+during ACK is sent
+
+###############################################################################
+1.0.33	2014/06/05
+###############################################################################
+
+- sending procedure is no more blocking (does not wait lgwstatus becomes FREE).
+  reduce listening window size on sensors
+
+- compute tmoa for downlink packet
+
+###############################################################################
+1.0.32	2014/06/03
+###############################################################################
+
+- proceed packets to send before packet to receive.
+  reduce listening window size on sensors
+
+- while packets to send are present, send them and do not return to main loop
+
+###############################################################################
+1.0.31	2014/05/28
+###############################################################################
+
+- downlink : if LP_RADIO_PKT_802154 && LP_RADIO_PKT_ACKDATA a radio packet is
+sent (added) before the data packet; basicaly this is a ack packet copied from 
+the field lp_opaque. Radio parameters are the same than the normal packet which
+is sent [gen].ackdata802wait (default 10) ms later.
+
+###############################################################################
+1.0.30	2014/05/15
+###############################################################################
+
+- to activate GPS [lrr].usegpsdevice
+	= /dev/nmea or /dev/gps
+
+actualy only /dev/nmea works and requires to modify configuration of knet agent
+in file "/knet/knetd.xml"
+
+<CONFIGURATION>        
+	<GPSOUT vcom="/dev/nmea" baud="9600"/>              
+</CONFIGURATION>        
+
+- radio packets without crc are now forwarded to LRC. LP_RADIO_PKT_NOCRC flag
+is set for such packets. So only packets with bad crc are still rejected by LRR.
+
+- crc is no more added to downlink packets.
+[gen].nocrc=1
+
+- LRC can change default preambule sizes for downlink packets by using the flag
+LP_RADIO_PKT_SZPREAMB and szpreamb member (lp_u.lp_radio.lr_u.lr_var_dn.lr_szpreamb).
+[gen].preamble=8 & preambleack=8
+
+###############################################################################
+1.0.21	2014/04/30
+###############################################################################
+
+- "." is required in $PATH to execute modem_on.sh from inittab
+
+###############################################################################
+1.0.20	2014/04/30
+###############################################################################
+
+- liblora compiled in calibrated version
+
+- protocole version 1 :
+	- attributs lp_vers lp_szh of s_lrr_pkt are now set and tested
+	- add t_lrr_stat_v1 structure with LP_TYPE_LRR_INF_STATS_V1 message
+
+- installation procedure now customize /etc/inittab and /etc/profile
+	- tar xvf ....
+	- lrr/com/sysconfiglrr.sh
+
+- if window time 1000ms for ack is out of delay retry at 2000ms.
+
+- config/lgw.ini now opens all LoraMAC channels LC1..LC6/SF* on radio A & B
+If used with a FPGA only 4 channels can be used.
+
+###############################################################################
+1.0.13	2014/04/18
+###############################################################################
+
+- change default IP@ of LRC to URL name : "lrc1.lyon.actility.com"
+
+- each [lrr].statrefresh seconds a t_lrr_stat is sent to LRC

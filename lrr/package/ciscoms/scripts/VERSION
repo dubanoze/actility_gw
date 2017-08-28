@@ -1,0 +1,18 @@
+#!/bin/sh
+# Script to return the LRR version.
+
+# Process passed-in platform environment
+# variables such as LRR_ROOT (if needed).
+# LRR_ROOT points to the top level installation path, and 
+# is automatically passed-in when executing any scripts.
+ROOTACT=$LRR_ROOT
+export ROOTACT
+
+if [ -f ${ROOTACT}/lrr/com/_parameters.sh ]
+then                  
+    . ${ROOTACT}/lrr/com/_parameters.sh 2>&1 >/dev/null
+fi
+
+cat $ROOTACT/lrr/Version
+
+exit 0

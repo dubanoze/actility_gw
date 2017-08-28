@@ -1,0 +1,40 @@
+################################################################################
+include $(ROOTACT)/rtbase/base/makefile.def
+include $(ROOTACT)/lrr/base/makefile.def
+
+################################################################################
+
+# not an option but mandatory
+CFLAGS += -Wno-unused-result -DLP_MODULE_LRR
+
+INC=-I../include -I../../include -I$(ROOTACT) -I$(ROOTACT)/include
+
+LIB=\
+	$(LIBBASE)
+
+SRC=\
+	inivar.c\
+	launcher.c
+
+OBJ=$(SRC:.c=.o)
+
+HDEPS=\
+	../include/_whatstr.h\
+	define.h\
+	struct.h\
+	infrastruct.h
+
+
+################################################################################
+EXELRR=lrr
+################################################################################
+all	: $(EXELRR).x
+
+$(EXELRR).x : $(OBJ) $(LIB)
+	$(CC) $(STATIC) $(LDFLAGS) -o $@ $^ $(MYLDFLAGS) $(THREADLD)
+
+%.o	: %.c $(HDEPS)
+	$(CC) $(CCFLAGS) $(INC) $(DEFINC) -c $<
+
+clean	:
+	@(rm _cproto.h *.x *.o *.a core *.log 2>/dev/null || exit 0)

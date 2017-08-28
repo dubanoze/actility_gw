@@ -1,0 +1,2 @@
+SYSTEM=fcpico
+CMD="netconfig.sh -i interfaces -k vpn.cfg"
