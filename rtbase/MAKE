@@ -67,6 +67,7 @@ EchoTargetList()
 	echo	"29	| oielec"
 	echo	"30	| gemtek"
 	echo	"31	| fclamp"
+	echo    "32     | rdkxxx"
 
 	echo "> "
 }
@@ -180,6 +181,9 @@ ChooseTarget()
 		31|fclamp)
 			echo "SYSTEM=fclamp" > $file
 			;;
+            	32|rdkxxx)
+                        echo "SYSTEM=rdkxxx" > $file
+                        ;;
 		*)
 			echo "MAKE rtbase : unknown target $rep"
 			tty > /dev/null 2>&1

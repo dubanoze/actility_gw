@@ -71,6 +71,9 @@ case	$SYSTEM	in
         linux-x86)
                 make -C exe_tty_x1 $* ARCH_COMM=tty ARCH_RADIO=SX1301_X1
         ;;
+        rdkxxx)
+                make -C exe_tty_x1 $* ARCH_COMM=tty ARCH_RADIO=SX1301_X1
+        ;;
 	*)
 		echo	"unknown system $SYSTEM"
 	;;

@@ -807,7 +807,22 @@ case $SYSTEM in
 		echo "Do not create user support on target $SYSTEM"
 		echo "Do not create service LRR on targe $SYSTEM"
 	;;
-
+        rdkxxx)         #Technicolor XB6
+                echo "SERIALMODE=tty" >> $ROOTACT/usr/etc/lrr/_parameters.sh
+                echo "BOARDTYPE=x1" >> $ROOTACT/usr/etc/lrr/_parameters.sh
+                echo "SERVICELRR=/etc/init.d/lrr" >> $ROOTACT/usr/etc/lrr/_parameters.sh
+                cat $ROOTACT/lrr/com/lrrservice.sh | sed "s?_REPLACEWITHROOTACT_?$ROOTACT?" > /etc/init.d/lrr
+                chmod +x /etc/init.d/lrr
+               # if [ ! -f "/etc/rc2.d/S99lrr" ]
+               # then
+               #         ln -s /etc/init.d/lrr /etc/rc2.d/S99lrr
+               #         ln -s /etc/init.d/lrr /etc/rc3.d/S99lrr
+               #         ln -s /etc/init.d/lrr /etc/rc4.d/S99lrr
+               #         ln -s /etc/init.d/lrr /etc/rc5.d/S99lrr
+               #         ln -s /etc/init.d/lrr /etc/rc0.d/K01lrr
+               #         ln -s /etc/init.d/lrr /etc/rc6.d/K01lrr
+               # fi
+        ;;
 esac
 
 echo	"System configuration done"

@@ -568,6 +568,24 @@ ifeq ($(SYSTEM),gemtek)
     ARFLAGS=rv
 endif
 
+ifeq ($(SYSTEM),rdkxxx)
+        CC=arm-linux-gnueabihf-gcc
+        CFLAGS=-Wall -O3 -fPIC -DLINUX -fPIC -DARCHARM -DRDKXXX -g
+        CFLAGSNOO=-Wall -fPIC -DLINUX -fPIC -DARCHARM -DRDKXXX -g
+        CCFLAGS=$(CFLAGS)
+ 
+        LD=$(CC)
+        CCLD=$(CC)
+        LDFLAGS=-L$(ROOTACT)/lib -L$(ROOTACT)/shlib -lm -lrt
+        LDSOFLAGS=-shared -fPIC -L$(ROOTACT)/lib -L$(ROOTACT)/shlib
+        LDFLAGS += -L$(SDK)/lib -ldl
+        DEFINC += -I$(SDK)/include
+ 
+        AR=ar
+        ARFLAGS=rv
+endif
+
+
 
 MKWHAT=$(ROOTACT)/rtbase/shells/mkwhat.sh
 MKHALV=$(ROOTACT)/rtbase/shells/mkhalversion.sh
