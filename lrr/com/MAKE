@@ -29,8 +29,11 @@ case	$SYSTEM	in
 	wirmaar)
 		make -C exe_spi_x8 $* ARCH_COMM=spi ARCH_RADIO=SX1301_X8 
 	;;
-	natrbpi)
-		make -C exe_usb_x1 $* ARCH_COMM=usb ARCH_RADIO=SX1301_X1 
+	natrbpi_usb_v1.0)
+		make -C exe_usb_x1 $* ARCH_COMM=usb ARCH_RADIO=SX1301_X1
+	;;
+	rbpi_v1.0)
+		make -C exe_spi_x1 $* ARCH_COMM=spi ARCH_RADIO=SX1301_X1
 	;;
 	ir910)
 		make -C exe_usb_x1 $* ARCH_COMM=usb ARCH_RADIO=SX1301_X1 
@@ -53,7 +56,7 @@ case	$SYSTEM	in
         mtac_usb_v1.0)
                 make -C exe_usb_x1 $* ARCH_COMM=usb ARCH_RADIO=SX1301_X1
         ;;
-        mtac_v1.0|mtac_v1.5)
+        mtac_v1.0|mtac_v1.5|mtac_refresh_v1.5)
                 make -C exe_spi_x1 $* ARCH_COMM=spi ARCH_RADIO=SX1301_X1
         ;;
         rfilr)
@@ -68,7 +71,7 @@ case	$SYSTEM	in
         mtcap)
                 make -C exe_spi_x1 $* ARCH_COMM=spi ARCH_RADIO=SX1301_X1
         ;;
-        linux-x86)
+        linux-x86|linux-x86_64)
                 make -C exe_tty_x1 $* ARCH_COMM=tty ARCH_RADIO=SX1301_X1
         ;;
         rdkxxx)

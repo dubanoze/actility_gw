@@ -59,6 +59,11 @@ reset_sx1301()
         io -w -4 0x2000802c $(( $1&$((0xFFFF0FF)) ))
 }
 
+#Raspberry iMST iC880A SPI
+WAIT_GPIO() {
+    sleep 0.1
+}
+
 preStart() {
 	export PATH=.:$PATH:/usr/local/bin
 
@@ -168,7 +173,8 @@ preStart() {
 			# reboot needed because network config files were restored
 			echo "rebooting after execrff ..."
 			$ROOTACT/lrr/com/cmd_shells/reboot_pending.sh 5
-		else
+		elif [ -f "$execrfffile" ]
+		then
 			echo "execrff has been requested but no backup found ! Abort."
 			rm -f $execrfffile
 		fi
@@ -221,7 +227,7 @@ preStart() {
 		stty -F /dev/ttyS5 -echo igncr
 	fi
 
-	if [ "$SYSTEM" = "mtac_v1.0" -o "$SYSTEM" = "mtac_v1.5" ]; then
+	if [ "$SYSTEM" = "mtac_v1.0" -o "$SYSTEM" = "mtac_v1.5" -o "$SYSTEM" = "mtac_refresh_v1.5" ]; then
 		echo "Use /dev/spidev0.0 regardless of the used MTAC AP slot"
 		port1=/sys/devices/platform/mts-io/ap1
 		port2=/sys/devices/platform/mts-io/ap2
@@ -231,6 +237,28 @@ preStart() {
 		elif [ -d $port2 ] && [[ $(cat $port2/hw-version) = $lora_hw ]]; then
 			ln -sf /dev/spidev32765.2 /dev/spidev0.0
 		fi
+	fi
+
+	if [ "$SYSTEM" = "rbpi_v1.0" ]; then
+		IOT_SK_SX1301_RESET_PIN=5
+		echo "17" > /sys/class/gpio/export
+		echo "out" > /sys/class/gpio/gpio17/direction
+		echo "1" > /sys/class/gpio/gpio17/value
+		sleep 5
+		echo "0" > /sys/class/gpio/gpio17/value
+		sleep 1
+		echo "0" > /sys/class/gpio/gpio17/value
+		if [ -d /sys/class/gpio/gpio$IOT_SK_SX1301_RESET_PIN ]
+		then
+			echo "$IOT_SK_SX1301_RESET_PIN" > /sys/class/gpio/unexport; WAIT_GPIO
+		fi
+		# setup GPIO 7
+		echo "$IOT_SK_SX1301_RESET_PIN" > /sys/class/gpio/export; WAIT_GPIO
+		# set GPIO 7 as output
+		echo "out" > /sys/class/gpio/gpio$IOT_SK_SX1301_RESET_PIN/direction; WAIT_GPIO
+		# write output for SX1301 reset
+		echo "1" > /sys/class/gpio/gpio$IOT_SK_SX1301_RESET_PIN/value; WAIT_GPIO
+		echo "0" > /sys/class/gpio/gpio$IOT_SK_SX1301_RESET_PIN/value; WAIT_GPIO
 	fi
 }
 

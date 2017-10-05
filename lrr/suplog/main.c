@@ -44,7 +44,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "_suplogver.h"
- #include "htbl_suplog.h"
+#include "htbl_suplog.h"
 
 #ifdef WIRMAV2
 #define TRACEAGDIR  "/mnt/fsuser-1/trace_agent"
@@ -78,6 +78,9 @@
 #define ALPHAALLOWED    ""
 #define COMMANOTALLOWED		";|\\`><&$()-[]{} "
 #define COMMANOTALLOWED2	";|\\`><&$()-[]{}"
+#define CMDTOESCINDQUOTES	"\"\\$`"
+
+#define LASTCMDPATH			"/tmp/_suplog_lastcmd"
 
 #define CMD_SHELLS  "$ROOTACT/lrr/com/cmd_shells/"
 #define SHELLS      "$ROOTACT/lrr/com/shells/"
@@ -189,6 +192,9 @@
 #define RAMDIR
 #endif
 
+int lrr_keyEnc(unsigned char *plaintext, int plaintext_len, unsigned char *key,
+	unsigned char *iv, unsigned char *ciphertext,int maxlen,int aschex);
+
 char	*System	= "";
 
 /* Structure definition */
@@ -218,7 +224,7 @@ void endDisplay();
 void initDisplay();
 int filterPassword(newtComponent ent, void *data, int ch, int cursor);
 int checkString(char *s, const char *allowed, const int checkAlphaNum);
-void sendLogFiles(char *srv, char *port, char *user, char *pwd);
+void sendLogFiles(char *srv, char *port, char *user, char *pwd, int useSftp);
 void getGrepInfos(char *file);
 void getTransferInfos(char *title);
 void processCommandType(tMenuItem *choice);
@@ -357,7 +363,7 @@ tMenuItem MenuTrouble[] = {
 	{ " Disk usage", "df -h", CMDTYPE_STATIC, NONROOT },
 	{ " CPU / Memory / Processes", "top -b -n 1", CMDTYPE_DYNAMIC, NONROOT },
 	{ " Netstat", "netstat " NETSTAT_OPT, CMDTYPE_STATIC, ROOT },
-	{ " Show iptables", "/usr/sbin/iptables -L", CMDTYPE_STATIC, ROOT },
+	{ " Show iptables", "/usr/sbin/iptables -L -n -v", CMDTYPE_STATIC, ROOT },
 	{ " Show versions", "echo 'lrr version:' && \
 						cat $ROOTACT/lrr/Version && \
 						echo '\nUser versions in lrr.ini:' && \
@@ -375,6 +381,24 @@ tMenuItem MenuTrouble[] = {
 	{ " uptime", "uptime", CMDTYPE_STATIC, NONROOT },
 	{ " Network interfaces status", "ifconfig", CMDTYPE_STATIC, NONROOT },
 	{ " Network routes", "route -n", CMDTYPE_STATIC, NONROOT },
+	{ " Last restart cause",
+		"file=\"$ROOTACT/usr/etc/lrr/autorestart_last\"; \
+		if [ -f $file ]; \
+		then \
+		date '+%Y/%m/%d %H:%M:%S' -r $file; \
+		cat $file; \
+		else \
+		echo 'No autorestart detected.'; \
+		fi", CMDTYPE_STATIC, NONROOT },
+	{ " Last reboot cause",
+		"file=\"$ROOTACT/usr/etc/lrr/autoreboot_last\"; \
+		if [ -f $file ]; \
+		then \
+		date '+%Y/%m/%d %H:%M:%S' -r $file; \
+		cat $file; \
+		else \
+		echo 'No autoreboot detected.'; \
+		fi", CMDTYPE_STATIC, NONROOT },
 };
 
 // menu services
@@ -497,7 +521,16 @@ void dispResult(char *title, char *command, int isTail, int runOnce, const int g
 	if (giveRootPerm)
 		userRoot(1);
 
-	// execute the command
+	/* Backup the command */
+	f = fopen(LASTCMDPATH, "w");
+	if (f) {
+		fwrite(cmd, 1, strlen(cmd), f);
+		fwrite("\n", 1, 1, f);
+	}
+	if (f) fclose(f);
+	f = NULL;
+
+	/* execute the command */
 	system(cmd);
 
 	/* Back to suplog user */
@@ -527,7 +560,6 @@ void dispResult(char *title, char *command, int isTail, int runOnce, const int g
 
 		// display the result
 		newtTextboxSetText(tb, result);
-
 		newtFormRun(form, &es);
 
 		// stop if button 'Ok' pressed
@@ -671,6 +703,85 @@ int checkNotString(char *s, const char *notAllowed)
 }
 
 /**
+ * @brief      Check string to prevent malicious commands being executed
+ * 				Accept all graphical characters (alphanum + some special characters) and blank characters
+ * 				except the list of not allowed characters,
+ * 				Reject all others exotic characters.
+ * 				WARNING: Out of this function, the result must be place between double quotes not to lose blank characters.
+ *
+ * @param      s                The string to check
+ * @param[in]  notAllowed       The string containing not allowed characters
+ *
+ * @return     1 if ok, 0 if string use unauthorized characters
+ */
+int checkMetaString(char *s, const char *notAllowed)
+{
+	int ln, i;
+
+	if (!s)
+		return 0;
+
+	ln = strlen(s);
+
+	for (i=0; i<ln; i++)
+	{
+		// Not allowed characters from custom list
+		if (notAllowed && strchr(notAllowed, s[i])){
+			return 0;
+		}
+
+		// Extended ASCII unallowed
+		if (s[i] > 0x7e){
+			return 0;
+		}
+
+		// By default, authorized only ASCII characters(Graphical + blank characters), no UTF-8.
+		if ((s[i] <= 0x7e) && !isblank(s[i]) && !isgraph(s[i])){
+			return 0;
+		}
+
+	}
+	return 1;
+}
+
+/**
+ * @brief	Add '\' before special characters
+ *
+ * @param	in		string to treat
+ * @param	lgin		length of the string to treat
+ * @param	out		buffer to store the result
+ * @param	szout		size of the buffer to store the result
+ * @param	toescape	list of characters to escape
+ * @return	1 if activated, else return 0
+ */
+int escapeString(char *in, int lgin, char *out, int szout, char *toescape)
+{
+	int	sz;
+	char	*pt;
+
+	if (!in || !out)
+		return -1;
+
+	pt = in;
+	sz = 0;
+	while (*pt && pt < in+lgin && sz < szout)
+	{
+		if (strchr(toescape, *pt))
+			out[sz++] = '\\';
+		if (sz >= szout)
+			return -1;
+		out[sz++] = *pt;
+		pt++;
+	}
+	if (sz >= szout)
+		return -1;
+	out[sz] = '\0';
+
+//	printf("escapeString(%s) = '%s'\n", in, out);
+	return sz;
+}
+
+/**
  * @brief      Check if using ram disk to store log files is activated
  *
  * @return     1 if activated, else return 0
@@ -722,40 +833,18 @@ int isLogInRamDir()
  *
  *  \param title window title
  */
-void sendLogFiles(char *srv, char *port, char *user, char *pwd)
+void sendLogFiles(char *srv, char *port, char *user, char *pwd, int useSftp)
 {
-	struct tm *st;
-	char    tmp[1024], cmd[1024], fn[80], *logdir;
-	time_t  now;
-
-	// set target filename
-	now = time(NULL);
-	st = localtime(&now);
-	sprintf(fn, "LOGS_%02d%02d%02d_%02d%02d.tar.gz", st->tm_year%100, st->tm_mon+1, st->tm_mday, st->tm_hour, st->tm_min);
+	char    tmp[1024], cmd[1024], *logdir;
 
 	logdir = "";
 #if defined(RAMDIR)
 	if (isLogInRamDir())
 		logdir = LOGDIR;
 #endif
-#if defined(CISCOMS)
-	sprintf(cmd, "tar cvhf /tmp/sendlog.tar $ROOTACT/var/log/lrr $ROOTACT/usr/etc/lrr $ROOTACT/lrr/config %s %s; "
-#else
-	sprintf(cmd, "tar cvhf /tmp/sendlog.tar /var/log/messages $ROOTACT/var/log/lrr $ROOTACT/usr/etc/lrr $ROOTACT/lrr/config %s %s; "
-#endif
-#ifdef WIRMAV2
-		"gzip -f /tmp/sendlog.tar; ftpput -u %s -p \"%s\" -P %s %s /tmp/%s /tmp/sendlog.tar.gz;"
-		"if [ $? == 0 ]; then echo \"end of transfer of /tmp/%s\"; else echo \"ERROR\"; fi",
-		TRACEAGDIR, logdir, user, pwd, port, srv, fn, fn);
-#elif defined(WIRMAAR) || defined(CISCOMS) || defined(FCLOC) || defined(FCMLB) || defined(FCPICO) || defined(FCLAMP) || defined(WIRMANA) || defined(TEKTELIC) || defined(GEMTEK)
-		"gzip -f /tmp/sendlog.tar; curl -T /tmp/sendlog.tar.gz ftp://%s:\"%s\"@%s:%s/%s;"
-		"if [ $? == 0 ]; then echo \"end of transfer of /tmp/%s\"; else echo \"ERROR\"; fi",
-		TRACEAGDIR, logdir, user, pwd, srv, port, fn, fn);
-#else
-		"gzip -f /tmp/sendlog.tar; ftp -n <<END_FTP ;\nopen %s %s\nquote user %s\n"
-		"quote pass \"%s\"\nbinary\nput /tmp/sendlog.tar.gz /tmp/%s\nquit\nEND_FTP\n"
-		" if [ $? == 0 ]; then echo \"end of transfer of /tmp/%s\"; else echo \"ERROR\"; fi", TRACEAGDIR, srv, port, user, pwd, fn, fn);
-#endif
+
+	snprintf(cmd, sizeof(cmd), "%s/exportlog.sh -C -A '%s' -P '%s' -U '%s' -W \"%s\" -L '%s' -S '%d'", CMD_SHELLS, srv, port, user, pwd, logdir, useSftp);
+
 	snprintf(tmp, sizeof(tmp), "( %s ) > %s 2>&1", cmd, WorkFile);
 	tmp[sizeof(tmp)-1] = '\0';
 
@@ -847,23 +936,30 @@ void getGrepInfos(char *file)
  */
 void getTransferInfos(char *title)
 {
+	char	*key	= "12341234123412341234123412341234";
 	char tmp[80];
+	char PaCrypted[256];
 	struct newtExitStruct es;
 	newtComponent   form, btnConf, btnCan, entS, lblS, entU, lblU, entPa, lblPa, entPo, lblPo;
+	newtComponent	lblT, radS, radF;
+	int		useSftp = 1, ret;
 
-	newtCenteredWindow(50, 10, title);
+	newtCenteredWindow(52, 13, title);
 	form = newtForm(NULL, NULL, 0);
 	lblS = newtLabel(1, 1, "Server name or address :");
-	entS = newtEntry(26, 1, NULL, 20, NULL, NEWT_ENTRY_SCROLL);
-	lblPo = newtLabel(1, 3, "Port :");
-	entPo = newtEntry(26, 3, "21", 20, NULL, NEWT_ENTRY_SCROLL);
-	lblU = newtLabel(1, 5, "User name :");
-	entU = newtEntry(26, 5, NULL, 20, NULL, NEWT_ENTRY_SCROLL);
-	lblPa = newtLabel(1, 7, "Password :");
-	entPa = newtEntry(26, 7, NULL, 20, NULL, NEWT_ENTRY_SCROLL | NEWT_FLAG_PASSWORD);
-	btnConf = newtCompactButton(9, 9, "Confirm");
-	btnCan = newtCompactButton(27, 9, "Cancel");
-	newtFormAddComponents(form, lblS, entS, lblPo, entPo, lblU, entU, lblPa, entPa, btnConf, btnCan, NULL);
+	entS = newtEntry(26, 1, NULL, 22, NULL, NEWT_ENTRY_SCROLL);
+	lblT = newtLabel(1, 3, "Transfer type :");
+	radS = newtRadiobutton(26, 3, "SFTP (recommended)", 1, NULL);
+	radF = newtRadiobutton(26, 4, "FTP (less secure) ", 0, radS);
+	lblPo = newtLabel(1, 6, "Port :");
+	entPo = newtEntry(26, 6, "22", 22, NULL, NEWT_ENTRY_SCROLL);
+	lblU = newtLabel(1, 8, "User name :");
+	entU = newtEntry(26, 8, NULL, 22, NULL, NEWT_ENTRY_SCROLL);
+	lblPa = newtLabel(1, 10, "Password :");
+	entPa = newtEntry(26, 10, NULL, 22, NULL, NEWT_ENTRY_SCROLL | NEWT_FLAG_PASSWORD);
+	btnConf = newtCompactButton(9, 12, "Confirm");
+	btnCan = newtCompactButton(27, 12, "Cancel");
+	newtFormAddComponents(form, lblS, entS, lblT, radS, radF, lblPo, entPo, lblU, entU, lblPa, entPa, btnConf, btnCan, NULL);
 
 	while (1)
 	{
@@ -875,18 +971,43 @@ void getTransferInfos(char *title)
 				!checkNotString(newtEntryGetValue(entPo), COMMANOTALLOWED) ||
 				!checkNotString(newtEntryGetValue(entU), COMMANOTALLOWED))
 			{
-				strcpy(tmp, "Character \"" COMMANOTALLOWED "\" is not allowed !");
+				strcpy(tmp, "Characters \"" COMMANOTALLOWED "\" are not allowed !");
 				newtSetColor(NEWT_COLORSET_HELPLINE, "white", "red");
 				newtPushHelpLine(tmp);
 				newtRefresh();
 				continue;
 			}
 
+			if (!checkMetaString(newtEntryGetValue(entPa), NULL))
+			{
+				strcpy(tmp, "Incorrect characters used for the password !");
+				newtSetColor(NEWT_COLORSET_HELPLINE, "white", "red");
+				newtPushHelpLine(tmp);
+				newtRefresh();
+				continue;
+			}
+
+			// escape and crypt password => no need to espace if crypted
+//			escapeString(newtEntryGetValue(entPa), strlen(newtEntryGetValue(entPa)), PaEsc, sizeof(PaEsc), "`$\"\\");
+//			ret	= lrr_keyEnc((unsigned char *) PaEsc, strlen(PaEsc),(unsigned char *) key,NULL,(unsigned char *) PaCrypted,sizeof(PaCrypted),1);
+			ret	= lrr_keyEnc((unsigned char *) newtEntryGetValue(entPa), strlen(newtEntryGetValue(entPa)),(unsigned char *) key,NULL,(unsigned char *) PaCrypted,sizeof(PaCrypted),1);
+			if (ret <= 0)
+			{
+				strcpy(tmp, "Problem to treat the password");
+				newtSetColor(NEWT_COLORSET_HELPLINE, "white", "red");
+				newtPushHelpLine(tmp);
+				newtRefresh();
+				continue;
+			}
+			// set the key to use for unencryption in environment
+			setenv  ("SUPLOGKEY",strdup(key),1);
+
 			newtSetColor(NEWT_COLORSET_HELPLINE, "white", "blue");
 			newtPushHelpLine("Transfer in progress, please wait ...");
 			newtRefresh();
 
-			sendLogFiles(newtEntryGetValue(entS), newtEntryGetValue(entPo), newtEntryGetValue(entU), newtEntryGetValue(entPa));
+			useSftp = (newtRadioGetCurrent(radS) == radS);
+			sendLogFiles(newtEntryGetValue(entS), newtEntryGetValue(entPo), newtEntryGetValue(entU), PaCrypted, useSftp);
 
 			break;
 		}
@@ -1102,7 +1223,6 @@ void getNetworkConfigTPE(char *title)
 	while (1)
 	{
 		newtFormRun(form, &es);
-		printf("Apres newtFormRun\n");
 		if (es.u.co == btnConf)
 		{
 			/* check if string is autorized */
@@ -2145,7 +2265,10 @@ void runMenu(char *title, tMenuItem *menu, int szMenu)
  */
 int main(int argc, char *argv[])
 {
-	char tmp[1024], *pt;
+	char tmp[1024];
+#if defined(WIRMAV2) || defined(CISCOMS) || defined(FCLOC) || defined(FCMLB) || defined(FCPICO) || defined(FCLAMP) || defined(TEKTELIC) || defined(GEMTEK) || defined(WIRMAAR) || defined(WIRMANA)
+	char * pt;
+#endif	
 
 	/* Get real UID, effective UID and save set-user ID */
 	getresuid(&ruid, &euid, &suid);

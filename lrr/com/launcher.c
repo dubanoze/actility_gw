@@ -134,12 +134,22 @@ void	InitSystem()
 }
 #endif
 
-#ifdef	NATRBPI
+#ifdef	NATRBPI_USB
 #define	SYSTEM_DEFINED
 void	InitSystem()
 {
-	System		= "natrbpi";
+	System		= "natrbpi_usb_v1.0";
 	SerialMode	= "usb";
+	BoardType	= "x1";
+}
+#endif
+
+#ifdef	RBPI_V1_0
+#define	SYSTEM_DEFINED
+void	InitSystem()
+{
+	System		= "rbpi_v1.0";
+	SerialMode	= "spi";
 	BoardType	= "x1";
 }
 #endif
@@ -174,30 +184,43 @@ void	InitSystem()
 }
 #endif
 
-#ifdef	MTAC
+#ifdef	MTAC_V1_0
 #define	SYSTEM_DEFINED
 void	InitSystem()
 {
-	System	= "mtac";
+	System	= "mtac_v1.0";
 	SerialMode	= "spi";
 	BoardType	= "x1";
 }
 #endif
 
-#ifdef	MTAC_USB
+#ifdef	MTAC_V1_5
 #define	SYSTEM_DEFINED
 void	InitSystem()
 {
-	System	= "mtac";
+	System	= "mtac_v1.5";
 	SerialMode	= "spi";
 	BoardType	= "x1";
 }
 #endif
 
-#ifdef	MTAC_USB
+
+#ifdef	MTAC_REFRESH_V1_5
+#define	SYSTEM_DEFINED
 void	InitSystem()
 {
-	System	= "mtac";
+	System	= "mtac_refresh_v1.5";
+	SerialMode	= "spi";
+	BoardType	= "x1";
+}
+#endif
+
+
+#ifdef	MTAC_USB
+#define	SYSTEM_DEFINED
+void	InitSystem()
+{
+	System	= "mtac_usb_v1.0";
 	SerialMode	= "usb";
 	BoardType	= "x1";
 }
@@ -322,9 +345,9 @@ void    InitSystem()
 #ifndef SYSTEM_DEFINED
 void    InitSystem()
 {
-#warning "you are compiling the LRR for linux-x86 generic target system"
+#warning "you are compiling the LRR for linux 32/64bits generic target system"
 #warning "this implies the use of a Semtech Picocell connected with ttyACMx"
-        System  = "linux-x86";
+        System  = "linux";
         SerialMode      = "tty";
         BoardType       = "x1";
         RootAct = getenv("ROOTACT");

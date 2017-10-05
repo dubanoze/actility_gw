@@ -36,6 +36,7 @@
 #define	LRR_DEFAULT_T3	DEFAULT_T3
 
 #define	NB_ANTENNA	3
+#define	ANTENNA_GAIN_MAX 127
 
 #define	NB_CHANNEL	255	//	0..254
 #define	UNK_CHANNEL	255
@@ -83,7 +84,7 @@
 #undef  REF_DESIGN_V2
 #endif
 
-#if defined(CISCOMS)
+#if defined(CISCOMS) || defined(FCLOC)
 #define HAL_VERSION_5 1
 #undef  HAL_VERSION_4
 #undef  HAL_VERSION_3

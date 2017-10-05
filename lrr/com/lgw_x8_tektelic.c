@@ -71,14 +71,13 @@
 #include "cproto.h"
 #include "extern.h"
 
-#if defined(WITH_GPS) && defined(REF_DESIGN_V2)
+#ifdef WITH_GPS
 sx1301ar_tref_t Gps_time_ref[SX1301AR_MAX_BOARD_NB];
 int Gps_ref_valid; 
 time_t		LgwTmmsUtcTime;		// tmms mono of the last UTC/GPS
 struct timespec	LgwCurrUtcTime;		// last UTC + nsec computation
 struct timespec	LgwBeaconUtcTime;	// last beacon
-#endif	/* defined(WITH_GPS) && defined(REF_DESIGN_V2) */
-
+#endif /* WITH_GPS */
 
 static	int	_LgwStarted;
 static	int	LgwAntennas[SX1301AR_MAX_BOARD_NB][SX1301AR_BOARD_CHIPS_NB];	// Antenna id connected to each chip
@@ -166,7 +165,7 @@ int	LgwTxFree(uint8_t board,uint8_t *txstatus)
 	sx1301ar_tstat_t	status;
 
 	*txstatus	= 0;
-//	sx1301ar_tx_status(board,0,&status);
+
 	IsBoardStatusTxFree(board, &status);
 	*txstatus	= status;
 	if	(*txstatus != TX_FREE)
@@ -490,10 +489,6 @@ static	void LgwDumpLutConf(FILE *f,int l, sx1301ar_tx_gain_t *lut)
 #define LINUXDEV_PATH_DEFAULT   "/dev/spidev1.0"
 #else
 #define LINUXDEV_PATH_DEFAULT   "/dev/spidev0.0"
-#endif
-
-#if !defined(REF_DESIGN_V2)
-static	char	*spi1_path = LINUXDEV_PATH_DEFAULT;
 #endif
 
 int	LgwConfigureLut(FILE *f, sx1301ar_tx_gain_lut_t *txlut, int board, int rfc, int config)
@@ -841,7 +836,7 @@ void	LgwStop()
 	}
 }
 
-#ifdef	WITH_GPS
+#ifdef WITH_GPS
 void	LgwGpsTimeUpdated(struct timespec *utc_from_gps, struct timespec * ubxtime_from_gps)
 {
 	int x; /* return value for sx1301ar_* functions */
@@ -851,10 +846,8 @@ void	LgwGpsTimeUpdated(struct timespec *utc_from_gps, struct timespec * ubxtime_
 	time_t	now;
 	now = rtl_tmmsmono();
 
-#ifdef REF_DESIGN_V2
 	for (board=0; board<LgwBoard; board++)
 	{
-#endif
 		/* Get timestamp value captured on PPS edge (use mutex to protect hardware access) */
 		x = sx1301ar_get_trigcnt( board, &cnt_pps );
 		if( x != 0 )
@@ -870,26 +863,16 @@ void	LgwGpsTimeUpdated(struct timespec *utc_from_gps, struct timespec * ubxtime_
 		}
 
 		/* Attempt sync */
-#if defined(REF_DESIGN_V2)
 		x = sx1301ar_synchronize( board, &(Gps_time_ref[board]), *utc_from_gps, cnt_pps, hs_pps, NULL);
-#else
-		x = sx1301ar_synchronize( board, &Gps_time_ref, *utc_from_gps, cnt_pps, hs_pps, NULL);
-#endif
 		if( x == 0 )
 		{
-#ifdef REF_DESIGN_V2
 			RTL_TRDBG(3, "Sync successful board%d (XTAL err: %.9lf)\n", board, Gps_time_ref[board].xtal_err ); /* too verbose */
-#else
-			RTL_TRDBG(3, "Sync successful board%d (XTAL err: %.9lf)\n", board, Gps_time_ref.xtal_err ); /* too verbose */
-#endif
 		}
 		else
 		{
 			RTL_TRDBG(3, "Sync board%d failed x=%d: %s\n", board, x, sx1301ar_err_message( sx1301ar_errno ) ); /* too verbose */
 		}
-#ifdef REF_DESIGN_V2
 	}
-#endif
 	LgwCurrUtcTime.tv_sec	= utc_from_gps->tv_sec;
 	LgwCurrUtcTime.tv_nsec	= 0;
 	LgwTmmsUtcTime = now;
@@ -968,11 +951,7 @@ RTL_TRDBG(1,"PKT RECV board%d tms=%09u tus=%09u status=%s sz=%d freq=%d mod=0x%0
 #ifdef WITH_GPS
 		if (UseGpsTime)
 		{
-#ifdef REF_DESIGN_V2
 			if (sx1301ar_cnt2utc(Gps_time_ref[board], p->count_us, &fetch_time) == 0)
-#else
-			if (sx1301ar_cnt2utc(Gps_time_ref, p->count_us, &fetch_time) == 0)
-#endif /* defined(REF_DESIGN_V2) */
 			{
 				fetch_tm = gmtime( &(fetch_time.tv_sec) );
 				sprintf(gpstm[i], "gpstime=%02i:%02i:%02i.%03li ", fetch_tm->tm_hour, fetch_tm->tm_min, fetch_tm->tm_sec, (fetch_time.tv_nsec)/1000000 );
@@ -1105,11 +1084,7 @@ RTL_TRDBG(1,"    rf%d: valid=%d finetime=%d timestamp=%09u %schip=%d halchan=%d 
 		// that we consider 'i' is rfchain number in 'uppkt.lp_chain |= i&0x01'
 		// it could be a problem !
 
-#ifdef CISCOMS
-		uppkt.lp_rssi		= p->rsig[i].rssi_sig;
-#else
 		uppkt.lp_rssi		= p->rsig[i].rssi_chan;
-#endif /* CISCOMS */
 		uppkt.lp_snr		= p->rsig[i].snr;
 
 
@@ -1179,7 +1154,7 @@ int	LgwDoRecvPacket(time_t tms)
 }
 
 /*!
-* \fn int8_t GetTxCalibratedEIRP(int8_t tx_requested, int8_t antenna_gain, int8_t cable_loss, uint8_t board, uint8_t rfc)
+* \fn int8_t GetTxCalibratedEIRP(int8_t tx_requested, float antenna_gain, float cable_loss, uint8_t board, uint8_t rfc)
 * \brief Get the LUT-calibrated EIRP value
 * \param tx_requested: Requested EIRP value set by the user (dBm)
 * \param antenna_gain: Gain of the antenna (dBm)
@@ -1193,34 +1168,27 @@ int	LgwDoRecvPacket(time_t tms)
 * This function takes the user-requested Tx EIRP and returns the nearest inferior workable value, based on the LUT calibration table.
 *
 */
-int8_t GetTxCalibratedEIRP(int8_t tx_requested, int8_t antenna_gain, int8_t cable_loss, uint8_t board, uint8_t rfc)
+int8_t GetTxCalibratedEIRP(int8_t tx_requested, float antenna_gain, float cable_loss, uint8_t board, uint8_t rfc)
 {
-	int8_t	tx_found, tx_tmp;
+	int8_t	tx_found;
+	float	tx_tmp;
 	int	i, nb_lut_max;
 	sx1301ar_tx_gain_lut_t	txlut;
 
 	tx_tmp = tx_requested - antenna_gain + cable_loss;
 	LgwConfigureLut(NULL, &txlut, board, rfc, 0);
-#ifdef CISCOMS
-	/* Tx LUT table sample for Ciscoms
-	idx lut: 0  1  2  3  4   ...   14 15 16 ... 31
-	tx lut : 2  5  7  9  11  ...   16 27 0      0
-	*/
-	nb_lut_max = 16;
-#else
 	nb_lut_max = SX1301AR_BOARD_MAX_LUT_NB;
-#endif
 	tx_found = txlut.lut[0].rf_power; /* If requested value is less than the lowest LUT power value */
 	for (i = (nb_lut_max-1); i >= 0; i--)
 	{
-		if ( tx_tmp >= txlut.lut[i].rf_power)
+		if ( tx_tmp >= (float)txlut.lut[i].rf_power)
 		{
 			tx_found = txlut.lut[i].rf_power;
 			break;
 		}
 	}
 
-	return (tx_found + antenna_gain - cable_loss);
+	return ((int)roundf((float)tx_found + antenna_gain - cable_loss));
 }
 
 static	u_int	WaitSendPacket(int blo,time_t tms,sx1301ar_tstat_t *txstatus, int board)
@@ -1237,7 +1205,6 @@ static	u_int	WaitSendPacket(int blo,time_t tms,sx1301ar_tstat_t *txstatus, int b
 	do
 	{
 		j++;
-//		sx1301ar_tx_status(board,0,txstatus);
 		IsBoardStatusTxFree(board, txstatus);
 #if	0
 		u_int	t;
@@ -1268,7 +1235,6 @@ static	int	SendPacketNow(int blo,t_lrr_pkt *downpkt,T_lgw_pkt_tx_t txpkt, int bo
 
 	left	= LgwNbPacketWait;
 
-//	sx1301ar_tx_status(board,0,&txstatus);
 	IsBoardStatusTxFree(board, &txstatus);
 	if	(downpkt->lp_lgwdelay == 0 && txstatus != TX_FREE)
 	{
@@ -1338,7 +1304,6 @@ RTL_TRDBG(1,"PKT SEND board%d tms=%09u/%d status=%d sz=%d left=%d freq=%d mod=0x
 		diff	= ABS(rtl_tmmsmono() - downpkt->lp_tms);
 
 		scheduled		= downpkt->lp_lgwdelay;
-#ifdef REF_DESIGN_V2
 		LastTmoaRequested[board]	= ceil(downpkt->lp_tmoa/1000);
 		LastTmoaRequested[board]	= LastTmoaRequested[board] +
 					(LastTmoaRequested[board] * 10)/100;
@@ -1346,28 +1311,12 @@ RTL_TRDBG(1,"PKT SEND board%d tms=%09u/%d status=%d sz=%d left=%d freq=%d mod=0x
 				LastTmoaRequested[board],scheduled);
 		LastTmoaRequested[board]	= LastTmoaRequested[board] + scheduled + 70;
 		CurrTmoaRequested[board]	= LastTmoaRequested[board];
-#else
-		LastTmoaBoard		= board;
-		LastTmoaRequested	= ceil(downpkt->lp_tmoa/1000);
-		LastTmoaRequested	= LastTmoaRequested +
-					(LastTmoaRequested * 10)/100;
-		RTL_TRDBG(1,"LGW DELAY tmao request=%dms + sched=%dms\n",
-				LastTmoaRequested,scheduled);
-		LastTmoaRequested	= LastTmoaRequested + scheduled + 70;
-		CurrTmoaRequested	= LastTmoaRequested;
-#endif /* defined(REF_DESIGN_V2) */
 	}
 	else
 	{
 	// TODO meme si no delay il faut compter la requete
-#ifdef REF_DESIGN_V2
 		LastTmoaRequested[board]	= 0;
 		CurrTmoaRequested[board]	= 0;
-#else
-		LastTmoaBoard		= 0;
-		LastTmoaRequested	= 0;
-		CurrTmoaRequested	= 0;
-#endif /* defined(REF_DESIGN_V2) */
 	}
 
 	if	(TraceLevel >= 1)
@@ -1378,7 +1327,7 @@ RTL_TRDBG(1,"PKT SEND board%d tms=%09u/%d status=%d sz=%d left=%d freq=%d mod=0x
 		LoRaMAC_t	mf;
 		u_char		*pt;
 
-		memset	(&mf,0,sizeof(mf));
+		memset(&mf,0,sizeof(mf));
 
 		if (downpkt->lp_beacon == 0) {
 			// we assumed this is a loramac packet
@@ -1497,7 +1446,7 @@ static	int	SendPacket(t_imsg  *msg)
 	{
 		LgwNbChanDownError++;	
 		RTL_TRDBG(1,"SendPacket: ChanDownError += 1 chan=%d maxchan=%d name=%s\n",
-			downpkt->lp_channel, MaxChannel, TbChannel[downpkt->lp_channel].name[0]);
+			downpkt->lp_channel, MaxChannel, (downpkt->lp_channel >= MaxChannel?"":TbChannel[downpkt->lp_channel].name[0]));
 		return	0;
 	}
 	chan	= &TbChannel[downpkt->lp_channel];
@@ -1601,7 +1550,6 @@ int	LgwDoSendPacket(time_t now)
 		RTL_TRDBG(1, "classb useallslot=%d\n", classbuseall);
 	}
 
-#ifdef REF_DESIGN_V2
 #ifdef WITH_GPS
 	ref_age = time( NULL ) - Gps_time_ref[0].systime;
 	Gps_ref_valid = (ref_age >= 0) && (ref_age < 60);
@@ -1617,7 +1565,7 @@ int	LgwDoSendPacket(time_t now)
 
 	for (board=0; board<LgwBoard; board++)
 	{
-		if	((msg = rtl_imsgGet(LgwSendQ[board],IMSG_BOTH)) != NULL)
+		if	((msg = rtl_imsgGet(LgwSendQ[board], IMSG_BOTH)) != NULL)
 		{
 			t_lrr_pkt	*downpkt;
 
@@ -1678,49 +1626,6 @@ send_pkt:
 			rtl_imsgFree(msg);
 		}
 	}
-#else
-#ifdef WITH_GPS
-	ref_age = time( NULL ) - Gps_time_ref.systime;
-	Gps_ref_valid = (ref_age >= 0) && (ref_age < 60);
-#endif /* WITH_GPS */
-
-	if	((msg= rtl_imsgGet(LgwSendQ,IMSG_BOTH)) != NULL)
-	{
-		t_lrr_pkt	*downpkt;
-
-		downpkt	= msg->im_dataptr;
-		left	= rtl_imsgCount(LgwSendQ);
-		if	(left > 0 && left > LgwNbPacketWait)
-		{
-			LgwNbPacketWait	= left;
-		}
-		if	(downpkt->lp_delay == 0 && CurrTmoaRequested)
-		{	// mode immediate
-			if	(ABS(now - downpkt->lp_tms) > MaxReportDnImmediat)
-			{
-		RTL_TRDBG(1,"PKT SEND NODELAY not sent after 3s => dropped\n");
-				SetIndic(downpkt,0,LP_C1_MAXTRY,LP_C2_MAXTRY,-1);
-				SendIndicToLrc(downpkt);
-				rtl_imsgFree(msg);
-				return	0;
-			}
-		RTL_TRDBG(1,"PKT SEND NODELAY avoid collision repostpone=%d\n",
-						CurrTmoaRequested);
-			rtl_imsgAddDelayed(LgwSendQ,msg,CurrTmoaRequested+3);
-			return	0;
-		}
-		ret	= SendPacket(msg);
-		if	(ret > 0)
-		{
-			SetIndic(downpkt,1,-1,-1,-1);
-			nbs	+= ret;
-		}
-		else
-			SetIndic(downpkt,0,-1,-1,-1);
-		SendIndicToLrc(downpkt);
-		rtl_imsgFree(msg);
-	}
-#endif /* defined(REF_DESIGN_V2) */
 	return	nbs;
 }
 

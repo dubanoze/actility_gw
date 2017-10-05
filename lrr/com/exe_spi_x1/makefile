@@ -36,6 +36,10 @@ ifeq ($(SYSTEM),gemtek)
 	CFLAGS += -DWITH_GPS
 endif
 
+ifeq ($(SYSTEM),mtac_refresh_v1.5)
+	CFLAGS += -DWITH_GPS
+endif
+
 ################################################################################
 EXELRR=lrr
 

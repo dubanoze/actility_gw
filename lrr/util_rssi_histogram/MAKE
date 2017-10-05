@@ -20,12 +20,13 @@ case	$SYSTEM	in
 #		make $*
 		echo	"Disabled because HAL version > 4.0"
 	;;
-	natrbpi)
+	natrbpi_usb_v1.0)
 		LGW_PATH=$ROOTACT/lora_gateway_usb_x1/libloragw
 		export LGW_PATH
-		CROSS_COMPILE=
-		export CROSS_COMPILE
 		make $*
+	;;
+	rbpi_v1.0)
+		echo	"Disabled because HAL version > 4.0"
 	;;
 	ir910)
 		LGW_PATH=$ROOTACT/lora_gateway_usb_x1/libloragw

@@ -91,10 +91,12 @@ char	*ExtRadioRestart	= "/tmp/lrrradiorestart";
 u_int	VersionMaj;
 u_int	VersionMin;
 u_int	VersionRel;
+u_int	VersionFix;
 
 u_int	VersionMajRff;
 u_int	VersionMinRff;
 u_int	VersionRelRff;
+u_int	VersionFixRff;
 time_t	RffTime;
 
 int			PingRttPeriod	= 60;		// sec
@@ -117,6 +119,9 @@ char			*SpiDevice	= "/dev/spidev1.0";
 #elif defined(REF_DESIGN_V2)
 char			*SpiDevice[SX1301AR_MAX_BOARD_NB];
 #endif
+#ifdef	WITH_TTY
+char			*TtyDevice	= "/dev/ttyACM0";
+#endif
 int			CfgRadioState	= 0;	// config flag save CfgRadio
 int			CfgRadioStop	= 0;	// config flag
 int			CfgRadioDnStop	= 0;	// config flag
@@ -125,8 +130,8 @@ int			DownRadioStop	= 0;	// state of downlink radio
 int			MainWantStop	= 0;
 int			MainStopDelay	= 5;
 
-int			AntennaGain[NB_ANTENNA];
-int			CableLoss[NB_ANTENNA];
+float			AntennaGain[NB_ANTENNA];
+float			CableLoss[NB_ANTENNA];
 
 char 			* CustomVersion_Hw;
 char 			* CustomVersion_Os;
@@ -155,6 +160,7 @@ u_int			LapFlags	= LK_TCP_CLIENT|LK_SSP_SLAVE|
 					LK_TCP_RECONN|LK_LNK_SAVEDNSENT;
 
 t_lrc_link		TbLrc[NB_LRC_PER_LRR];
+int			MasterLrc = -1;
 
 
 t_lrr_config	ConfigIpInt;
@@ -221,8 +227,10 @@ int	ServiceStopped	= 0;
 int	LapState	= 0;
 
 char    *TraceFile      = NULL;
+char    *TraceStdout    = NULL;
 int     TraceSize       = 1*1000*1000;     // for each file 1M
 int     TraceLevel      = 0;
+int     TraceLevelP	= 0;		// level persistent
 int     TraceDebug      = 0;
 
 char	ConfigDefault[PATH_MAX];
@@ -242,6 +250,7 @@ char	*ConfigFileParams	= "_parameters.sh";
 char	*ConfigFileSystem	= "_system.sh";
 char	*ConfigFileCustom	= "custom.ini";
 char	*ConfigFileDynCalib	= "dyncalib.ini";
+char	*ConfigFileDynLap	= "dynlap.ini";
 char	*ConfigFileGps		= "gpsman.ini";
 char	*ConfigFileDefine	= "defines.ini";
 char	*ConfigFileLrr		= "lrr.ini";
@@ -260,6 +269,8 @@ char	*ConfigFileLgwCustom	= "lgw.ini";
 #endif
 
 char	*ConfigFileLowLvLgw	= "lowlvlgw.ini";
+
+char	*ConfigFileBootSrv	= "bootserver.ini";
 
 
 pthread_t	MainThreadId;
@@ -325,6 +336,8 @@ u_short			LrrIDExt	= 0;
 u_char			LrrIDPref	= 0;
 u_char			LrrIDGetFromTwa	= 0;	// NFR684: get lrrid from TWA
 u_int			LrrIDFromTwa	= 0;	// NFR684: lrrid got from TWA
+u_int			LrrIDGetFromBS	= 0;	// NFR997
+u_int			LrrIDFromBS	= 0;
 float			LrrLat		= 90.0;
 float			LrrLon		= 90.0;
 int			LrrAlt		= 0;
@@ -676,6 +689,7 @@ static	void	ReadRffInfos()
 	VersionMajRff	= 0;
 	VersionMinRff	= 0;
 	VersionRelRff	= 0;
+	VersionFixRff	= 0;
 	RffTime	= 0;
 
 	sprintf	(file,"%s/usr/etc/lrr/saverff_done",RootAct);
@@ -688,8 +702,8 @@ static	void	ReadRffInfos()
 		if	((pt=strstr(line,"RFFVERSION=")))
 		{
 			pt	= strchr(line,'='); pt++;
-			sscanf	(pt,"%d.%d.%d",
-				&VersionMajRff,&VersionMinRff,&VersionRelRff);
+			sscanf	(pt,"%d.%d.%d_%d",
+			&VersionMajRff,&VersionMinRff,&VersionRelRff,&VersionFixRff);
 			continue;
 		}
 		if	((pt=strstr(line,"RFFDATE=")))
@@ -940,8 +954,19 @@ void	SaveConfigFileState()
 		fprintf	(f,"\tuidfromtwa=0x%08x\n",LrrIDFromTwa);
 	}
 
-	fprintf	(f,"[trace]\n");
-	fprintf	(f,"\tlevel=%d\n",TraceLevel);
+	if	(TraceLevelP > 0)
+	{
+		fprintf	(f,"[trace]\n");
+		fprintf	(f,"\tlevelp=%d\n",TraceLevelP);
+	}
+	else
+	{
+		fprintf	(f,";[trace]\n");
+		fprintf	(f,";\tlevelp=%d\n",TraceLevelP);
+	}
+
+	if	(LrrIDFromBS != 0)
+		fprintf	(f,"\tuidfrombootsrv=0x%08x\n",LrrIDFromBS);
 
 	fclose	(f);
 }
@@ -972,8 +997,8 @@ char	*LrrPktFlagsTxt(unsigned int type)
 		strcat(buf,"Y");
 	if	(type & LP_RADIO_PKT_PINGSLOT)
 		strcat(buf,"B");
-	if	(type & LP_RADIO_PKT_FORKED)
-		strcat(buf,"F");
+	if	(type & LP_RADIO_PKT_LORA_E)
+		strcat(buf,"E");
 	if	(type & LP_RADIO_PKT_RX2)
 		strcat(buf,"2");
 
@@ -1117,7 +1142,8 @@ static	u_int	DoLrrID(char *str,u_short *ext,u_char *pref)
 		}
 #endif
 #endif
-#ifdef	NATRBPI
+#if defined(RBPI_V1_0) || defined(NATRBPI_USB)
+		char	*pt;
 		uint64_t	serial;
 		char		line[1024];
 		FILE		*f;
@@ -1165,6 +1191,12 @@ static	u_int	DoLrrID(char *str,u_short *ext,u_char *pref)
 // Test if getting lrrid from TWA is configured
 static	void	DoLrrIDFromTwa(char *str)
 {
+	if (LrrIDGetFromBS)	// NFR997
+	{
+		RTL_TRDBG(1,"Getting lrrid from twa is disabled (got from bootserver)\n");
+		return;
+	}
+
 	if	(!str || !*str || strcmp(str,"local") == 0)
 	{
 		RTL_TRDBG(1,"Getting lrrid from twa is disabled\n");
@@ -1391,7 +1423,21 @@ static	void	LoadConfigLrr(int hot,int dumponly)
 	if	(file && (err=rtl_iniParse(file,CfgCBIniLoad,HtVarLrr)) < 0)
 	{
 		RTL_TRDBG(0,"parse '%s' error=%d\n",file,err);
+
 		exit(1);
+	}
+	if (LrrIDGetFromBS)	// NFR997
+	{
+		file	= DoConfigFileCustom(ConfigFileDynLap);
+		if	(file)
+		{
+			RTL_TRDBG(0,"load custom '%s'\n",file);
+		}
+		if	(file && (err=rtl_iniParse(file,CfgCBIniLoad,HtVarLrr)) < 0)
+		{
+			RTL_TRDBG(0,"parse '%s' error=%d\n",file,err);
+			exit(1);
+		}
 	}
 	file	= DoConfigFileCustom(ConfigFileState);
 	if	(file)
@@ -1453,6 +1499,15 @@ static	void	LoadConfigLrr(int hot,int dumponly)
 	{
 		IsmFreq		= 920;
 	}	else
+	if	(strcmp(IsmBand,"cn779") == 0)
+	{
+		IsmFreq		= 779;
+	}	else
+	if	(strcmp(IsmBand,"cn470") == 0)
+	{
+		IsmAsymDownlink	= 1;
+		IsmFreq		= 470;
+	}	else
 	{
 		IsmFreq		= AdjustFreqForCalibration(IsmBand);
 	}
@@ -1464,10 +1519,13 @@ static	void	LoadConfigLrr(int hot,int dumponly)
 							IsmAsymDnModulo);
 	IsmAsymDnOffset = CfgInt(HtVarLrr,"ism",-1,"asymdownlinkoffset",
 							IsmAsymDnOffset);
-#if	defined(WIRMAAR) || defined(WIRMAV2) || defined(FCPICO) || defined(FCLAMP) || defined(FCLOC) || defined(FCMLB) || defined(CISCOMS) || defined(GEMTEK) || defined(WIRMANA)
+#if	defined(WIRMAAR) || defined(WIRMAV2) || defined(FCPICO) || defined(FCLAMP) || defined(FCLOC) || defined(FCMLB) || defined(CISCOMS) || defined(GEMTEK) || defined(WIRMANA) || defined(MTAC)
 	LinkTraceDir();		// see LogUseRamDir
 #endif
 	TraceLevel	= CfgInt(HtVarLrr,"trace",-1,"level",TraceLevel);
+	TraceLevelP	= CfgInt(HtVarLrr,"trace",-1,"levelp",0);
+	if		(TraceLevelP > 0)
+			TraceLevel	= TraceLevelP;
 	TraceDebug	= CfgInt(HtVarLrr,"trace",-1,"debug",TraceDebug);
 	if		(dumponly)	TraceDebug	= 0;
 	TraceSize	= CfgInt(HtVarLrr,"trace",-1,"size",TraceSize);
@@ -1475,6 +1533,7 @@ static	void	LoadConfigLrr(int hot,int dumponly)
 	TraceSize	= 10*1000*1000;
 #endif
 	TraceFile	= CfgStr(HtVarLrr,"trace",-1,"file","TRACE.log");
+	TraceStdout	= CfgStr(HtVarLrr,"trace",-1,"stdout",NULL);
 	StatRefresh	= CfgInt(HtVarLrr,"lrr",-1,"statrefresh",StatRefresh);
 	RfCellRefresh	= CfgInt(HtVarLrr,"lrr",-1,"rfcellrefresh",RfCellRefresh);
 	ConfigRefresh	= CfgInt(HtVarLrr,"lrr",-1,"configrefresh",ConfigRefresh);
@@ -1674,6 +1733,13 @@ RTL_TRDBG(1,"netitf=%d enable=%d name='%s' exists=%d type=%d\n",i,
 	}
 #endif /* defined(REF_DESIGN_V2) */
 
+#ifdef	WITH_TTY
+	TtyDevice	= CfgStr(HtVarLrr,System,-1,"ttydevice", TtyDevice);
+	if (TtyDevice && *TtyDevice)
+		setenv("TTYDEVICE", strdup(TtyDevice),1);
+	RTL_TRDBG(1,"TtyDevice '%s' (system=%s)\n", TtyDevice, System);
+#endif
+
 	IfaceDaemon	= CfgInt(HtVarLrr,"ifacefailover",-1,"enable",
 								IfaceDaemon);
 	AutoRebootTimer	= CfgInt(HtVarLrr,"lrr",-1,"autoreboottimer",
@@ -1704,6 +1770,9 @@ RTL_TRDBG(1,"netitf=%d enable=%d name='%s' exists=%d type=%d\n",i,
 	stridmode	= CfgStr(HtVarLrr,"lrr",-1,"uidmode","local");
 	DoLrrIDFromTwa(stridmode);
 
+	if (LrrIDGetFromBS)	// NFR997
+		LrrID	= (u_int) CfgInt(HtVarLrr,"lrr",-1,"uidfrombootsrv",0);
+
 {
 RTL_TRDBG(1,"LrrID '%s' lrrid=%u lrrid=%08x lrridext=%04x lrridpref=%02x\n",
 		strid,LrrID,LrrID,LrrIDExt,LrrIDPref);
@@ -1725,13 +1794,19 @@ RTL_TRDBG(1,"ifacedaemon=%d autoreboottimer=%d autoreversesshtimer=%d\n",
 
 	for	(i = 0 ; i < NB_ANTENNA ; i++)
 	{
-		AntennaGain[i]	= CfgInt(HtVarLrr,"antenna",i,"gain",0);
-		pt		= CfgStr(HtVarLrr,"antenna",i,"cableloss",NULL);
-		if	(pt && *pt)
-			CableLoss[i]	= CfgInt(HtVarLrr,"antenna",i,"cableloss",0);
-		else
-			CableLoss[i]	= CfgInt(HtVarLrr,"antenna",i,"cablelost",0);
-		RTL_TRDBG(1, "Antenna %d gain=%d dBm cableloss=%d dBm\n", i, AntennaGain[i], CableLoss[i]);
+		AntennaGain[i] = atof(CfgStr(HtVarLrr,"antenna",i,"gain", "0"));
+		CableLoss[i] = atof(CfgStr(HtVarLrr,"antenna",i,"cableloss", "0"));
+		if (CableLoss[i] == 0.0)
+			CableLoss[i] = atof(CfgStr(HtVarLrr,"antenna",i,"cablelost", "0"));
+		if (AntennaGain[i] > ANTENNA_GAIN_MAX) {
+			RTL_TRDBG(1, "Warning: use antenna gain max %.1f dBm\n", ANTENNA_GAIN_MAX);
+			AntennaGain[i] = ANTENNA_GAIN_MAX;
+		}
+		if (CableLoss[i] > ANTENNA_GAIN_MAX) {
+			RTL_TRDBG(1, "Warning: use antenna cable loss max %.1f dBm\n", ANTENNA_GAIN_MAX);
+			CableLoss[i] = ANTENNA_GAIN_MAX;
+		}
+		RTL_TRDBG(1, "Antenna %d gain=%.1f dBm cableloss=%.1f dBm\n", i, AntennaGain[i], CableLoss[i]);
 	}
 
 	OnConfigErrorExit = CfgInt(HtVarLrr,"exitonerror",-1,"configure",0);
@@ -1747,13 +1822,39 @@ RTL_TRDBG(1,"ifacedaemon=%d autoreboottimer=%d autoreversesshtimer=%d\n",
 	CustomVersion_Custom2 = CfgStr(HtVarLrr, "versions", -1, "custom2_version", "");
 	CustomVersion_Custom3 = CfgStr(HtVarLrr, "versions", -1, "custom3_version", "");
 
-	RTL_TRDBG(1, "Versions:\n\tlrr=%d.%d.%d\n\thardware=%s\n\tos=%s\n\thal=%s\n\tcustom_build=%s\n\tconfiguration=%s\n\tcustom1=%s\n\tcustom2=%s\n\tcustom3=%s\n", \
-		VersionMaj, VersionMin, VersionRel, \
+	RTL_TRDBG(1, "Versions:\n\tlrr=%d.%d.%d_%d\n\thardware=%s\n\tos=%s\n\thal=%s\n\tcustom_build=%s\n\tconfiguration=%s\n\tcustom1=%s\n\tcustom2=%s\n\tcustom3=%s\n", \
+		VersionMaj, VersionMin, VersionRel, VersionFix, \
 		CustomVersion_Hw, CustomVersion_Os, CustomVersion_Hal, CustomVersion_Build, \
 		CustomVersion_Config, CustomVersion_Custom1, CustomVersion_Custom2, CustomVersion_Custom3);
 
 	if	(CfgInt(HtVarLrr,"labonly",-1,"justreadconfig",0)>=1)
 		exit(1);
+}
+
+// search bootserver.ini
+static	int	LoadConfigBootSrv(int dumponly)
+{
+	int	err;
+	char	*file;
+
+	file	= DoConfigFileCustom(ConfigFileBootSrv);
+	if	(!file)
+		return 0;
+
+	RTL_TRDBG(0,"load custom '%s'\n",file);
+
+	if	((err=rtl_iniParse(file,CfgCBIniLoad,HtVarLrr)) < 0)
+	{
+		RTL_TRDBG(0,"parse '%s' error=%d\n",file,err);
+		exit(1);
+	}
+
+	rtl_htblDump(HtVarLrr,CBHtDumpLrr);
+
+	if	(!dumponly)
+		DecryptHtbl(HtVarLrr);
+
+	return 1;
 }
 
 static	void	CBHtDumpLgw(char *var,void *value)
@@ -1966,8 +2067,10 @@ static	void	ServiceStop(int sig)
 #endif
 	RTL_TRDBG(0,"service stopping sig=%d ...\n",sig);
 
+#ifndef	WITH_TTY
 	if	(LgwStarted())
 		LgwStop();
+#endif
 
 #ifdef WITH_GPS
 	if (GpsStarted());
@@ -2351,6 +2454,8 @@ static	void	SendRadioPacket(t_lrr_pkt *downpkt,u_char *data,int sz)
 		downpkt->lp_tms		= 0;
 		downpkt->lp_trip	= 0;
 		downpkt->lp_delay	= 0;
+		downpkt->lp_classc	= 1;
+		downpkt->lp_classcmc	= 0;
 	}
 
 	if	(downpkt->lp_tms && downpkt->lp_lk)
@@ -2371,7 +2476,11 @@ static	void	SendRadioPacket(t_lrr_pkt *downpkt,u_char *data,int sz)
 	}
 
 	if      ((downpkt->lp_flag & LP_RADIO_PKT_DELAY) != LP_RADIO_PKT_DELAY)
+	{
 		downpkt->lp_delay	= 0;
+		downpkt->lp_classc	= 1;
+		downpkt->lp_classcmc	= 0;
+	}
 
 
 	osz	= sz;
@@ -2603,8 +2712,17 @@ static	void	SendRadioBeacon(t_lrr_pkt *pktbeacon,u_char *data,int sz)
 	tv.tv_usec		= beacon->be_gns / 1000;
 	rtl_gettimeofday_to_iso8601date(&tv,NULL,when);
 
-RTL_TRDBG(1,"MAC SEND beacon to send at utc='%s' (%u,%09u)\n",
-		when,beacon->be_gss,beacon->be_gns);
+	if	(LgwBeaconUtcTime.tv_sec == beacon->be_gss)
+	{
+RTL_TRDBG(1,"MAC SEND beacon already programmed at utc='%s' (%u,%09u) lk=%p\n",
+		when,beacon->be_gss,beacon->be_gns,pktbeacon->lp_lk);
+		LgwBeaconRequestedDupCnt++;
+		return;
+	}
+
+RTL_TRDBG(1,"MAC SEND beacon to send at utc='%s' (%u,%09u) lk=%p\n",
+		when,beacon->be_gss,beacon->be_gns,pktbeacon->lp_lk);
+
 
 	LgwBeaconUtcTime.tv_sec	= beacon->be_gss;
 	LgwBeaconUtcTime.tv_nsec= beacon->be_gns;
@@ -2634,11 +2752,6 @@ RTL_TRDBG(1,"MAC SEND beacon to send at utc='%s' (%u,%09u)\n",
 	downpkt.lp_lgwdelay	= 1;
 	downpkt.lp_lk		= pktbeacon->lp_lk;
 
-#if	0
-	downpkt.lp_chain	= 0;
-	downpkt.lp_channel	= 127;
-	downpkt.lp_spfact	= 9;
-#else
 	downpkt.lp_chain	= beacon->be_chain;
 	downpkt.lp_channel	= beacon->be_channel;
 	downpkt.lp_spfact	= beacon->be_spfact;
@@ -2649,7 +2762,6 @@ RTL_TRDBG(1,"MAC SEND beacon to send at utc='%s' (%u,%09u)\n",
 		downpkt.lp_spfact	= 
 				CodeSpreadingFactor(Rx2Channel->dataraterx2);
 	}
-#endif
 	downpkt.lp_correct	= CodeCorrectingCode(CR_LORA_4_5);
 
 	downpkt.lp_size		= pktbeacon->lp_size;
@@ -2667,12 +2779,123 @@ RTL_TRDBG(1,"MAC SEND beacon sz=%d tmoa=%fms\n",downpkt.lp_size,downpkt.lp_tmoa/
 	LgwSendPacket(&downpkt,0,0,0);
 }
 
+static	void	SendRadioClassCMultiCast(t_lrr_pkt *pktmulti,u_char *data,int sz)
+{
+	t_lrr_pkt		downpkt;
+	t_lrr_multicast_dn	*multi	= &(pktmulti->lp_u.lp_multicast_dn);
+
+	struct	timeval	tv;
+	char	when[128];
+	int	ret;
+
+	LgwClassCRequestedCnt++;
+	LgwClassCLastDeliveryCause	= LP_CB_NA;
+
+	ret	= LgwStarted();
+	if	(LgwThreadStopped || !LgwThreadStarted || !ret)
+	{
+		RTL_TRDBG(1,"Radio thread KO start=%d cmdstart=%d cmdstop=%d\n",
+			ret,LgwThreadStarted,LgwThreadStopped);
+		LgwClassCLastDeliveryCause	= LP_CB_RADIO_STOP;
+		return;
+	}
+
+	if	(DownRadioStop)
+	{
+		RTL_TRDBG(1,"Radio stopped in downlink direction\n");
+		LgwClassCLastDeliveryCause	= LP_CB_RADIO_STOP_DN;
+		return;
+	}
+
+	memset	(&downpkt,0,sizeof(t_lrr_pkt));
+	memcpy	(&downpkt,pktmulti,LP_PRE_HEADER_PKT_SIZE);
+
+	// as we use ON_GPS mode a beacon can only be sent on PPS
+	multi->mc_gns	= 0;
+
+	memset	(&tv,0,sizeof(tv));
+	tv.tv_sec		= multi->mc_gss;
+	tv.tv_usec		= multi->mc_gns / 1000;
+	rtl_gettimeofday_to_iso8601date(&tv,NULL,when);
+
+	if	(LgwClassCUtcTime.tv_sec == multi->mc_gss)
+	{
+RTL_TRDBG(1,"MAC SEND classcmc already programmed at utc='%s' (%u,%09u) lk=%p\n",
+		when,multi->mc_gss,multi->mc_gns,pktmulti->lp_lk);
+		LgwClassCRequestedDupCnt++;
+		return;
+	}
+
+RTL_TRDBG(1,"MAC SEND classcmc to send at utc='%s' (%u,%09u) lk=%p\n",
+		when,multi->mc_gss,multi->mc_gns,pktmulti->lp_lk);
+
+
+	LgwClassCUtcTime.tv_sec	= multi->mc_gss;
+	LgwClassCUtcTime.tv_nsec= multi->mc_gns;
+
+#ifndef TEKTELIC	// No need for tektelic, use directly utc time
+	if	(!UseGpsTime)
+	{
+	RTL_TRDBG(1,"Classcmc packets need use of GPS time (usegpstime=1)\n");
+		return;
+	}
+	if	(!Gps_ref_valid || GpsFd < 0)
+	{
+	RTL_TRDBG(1,"Classcmc packets need correct GPS time synchro(%d) fd=%d\n",
+			Gps_ref_valid,GpsFd);
+		return;
+	}
+#endif
+
+	downpkt.lp_classc	= 0;
+	downpkt.lp_classcmc	= 1;
+	downpkt.lp_type		= LP_TYPE_LRR_PKT_RADIO;
+	downpkt.lp_flag		= LP_RADIO_PKT_DOWN;
+	downpkt.lp_gss		= multi->mc_gss;
+	downpkt.lp_gns		= multi->mc_gns;
+	downpkt.lp_tms		= rtl_tmmsmono();
+	downpkt.lp_trip		= 0;
+	downpkt.lp_delay	= 0;
+	downpkt.lp_lgwdelay	= 1;
+	downpkt.lp_lk		= pktmulti->lp_lk;
+
+	downpkt.lp_deveui	= multi->mc_deveui;
+	downpkt.lp_fcntdn	= multi->mc_fcntdn;
+
+	downpkt.lp_chain	= multi->mc_chain;
+	downpkt.lp_channel	= multi->mc_channel;
+	downpkt.lp_spfact	= multi->mc_spfact;
+	if	(Rx2Channel && downpkt.lp_channel == UNK_CHANNEL)
+	{
+		downpkt.lp_channel	= Rx2Channel->channel;
+		downpkt.lp_subband	= Rx2Channel->subband;
+		downpkt.lp_spfact	= 
+				CodeSpreadingFactor(Rx2Channel->dataraterx2);
+	}
+	downpkt.lp_correct	= CodeCorrectingCode(CR_LORA_4_5);
+
+	downpkt.lp_size		= pktmulti->lp_size;
+	downpkt.lp_payload	= (u_char *)malloc(downpkt.lp_size);
+	if	(!downpkt.lp_payload)
+	{
+RTL_TRDBG(0,"ERROR alloc payload %d\n",downpkt.lp_size);
+		return;
+	}
+	memcpy	(downpkt.lp_payload,data,downpkt.lp_size);
+	TmoaLrrPacket(&downpkt);
+
+RTL_TRDBG(1,"MAC SEND classcmc sz=%d tmoa=%fms\n",downpkt.lp_size,downpkt.lp_tmoa/1000.0);
+
+	LgwSendPacket(&downpkt,0,0,0);
+}
+
 
 static	void	RecvInfraPacket(t_lrr_pkt *downpkt)
 {
-	char		version[256];
-	char		cmd[1024];
-	char		traceupgrade[1024];
+	char	version[256];
+	char	cmd[1024];
+	char	traceupgrade[1024];
+	int	masterid;
 
 	switch	(downpkt->lp_type)
 	{
@@ -2839,6 +3062,38 @@ RTL_TRDBG(0,"ERROR: received LrrID==0 from TWA ! => retry later\n");
 	}
 	break;
 
+	// NFR997
+	case	LP_TYPE_LRR_INF_PARTITIONID:
+	{
+		masterid = (u_int)CfgInt(HtVarLrr, "lrr", -1, "masterid", 0);
+		RTL_TRDBG(1,"partitionid=%d for lrcid=%d (masterid=%d)\n",
+					downpkt->lp_partitionid, downpkt->lp_lrxid, masterid);
+		if	(LrrIDGetFromBS == 0)
+		{
+			RTL_TRDBG(0,"WARNING: received partitionid from lrc but NFR997 not activated\n");
+			break;
+		}
+
+		// check if partitionid correspond to master id
+		if (masterid == downpkt->lp_partitionid)
+		{
+			int	i;
+			// search index of lrc
+			RTL_TRDBG(3, "search lrc index ...\n");
+			for	(i = 0 ; i < NbLrc ; i++)
+			{
+				if	(&TbLapLrc[i] == downpkt->lp_lk)
+				{
+					MasterLrc = i;
+					RTL_TRDBG(1, "found master lrc: lrc %d (lrcid=%d)\n",
+						MasterLrc, downpkt->lp_lrxid);
+				}
+			}
+		}
+		RTL_TRDBG(0, "master lrc is lrc %d\n", MasterLrc);
+	}
+	break;
+
 	default :
 	break;
 	}
@@ -2969,6 +3224,7 @@ void	SendCapabToLrc(t_xlap_link *lktarget)
 	uppkt.lp_u.lp_capab.li_versMaj		= VersionMaj;
 	uppkt.lp_u.lp_capab.li_versMin		= VersionMin;
 	uppkt.lp_u.lp_capab.li_versRel		= VersionRel;
+	uppkt.lp_u.lp_capab.li_versFix		= VersionFix;
 	strncpy((char *)uppkt.lp_u.lp_capab.li_ismBand,IsmBand,9);
 	strncpy((char *)uppkt.lp_u.lp_capab.li_system,System,32);
 	strncpy((char *)uppkt.lp_u.lp_capab.li_ismBandAlter,IsmBandAlter,32);
@@ -2992,6 +3248,7 @@ void	SendCapabToLrc(t_xlap_link *lktarget)
 	uppkt.lp_u.lp_capab.li_lbtFtr		= LgwLbtEnable;
 #ifdef	WITH_GPS
 	uppkt.lp_u.lp_capab.li_classBFtr	= 1;
+	uppkt.lp_u.lp_capab.li_classCMcFtr	= 1;
 #endif
 	uppkt.lp_u.lp_capab.li_freqdnFtr	= 1;
 #endif
@@ -3129,9 +3386,9 @@ static	void	LapEventProceed(t_xlap_link *lk,int evttype,int evtnum,void *data,in
 		RTL_TRDBG(1,"LAP LRC STARTED\n");
 
 		// if NFR684 activated
-		RTL_TRDBG(1,"Get LrrID from twa = %d %08x\n", 
-				LrrIDGetFromTwa,LrrIDFromTwa);
-		if (LrrIDGetFromTwa)
+		RTL_TRDBG(1,"Get LrrID: from bootserver = %d, from twa = %d, lrrid=%08x\n", 
+				LrrIDGetFromBS, LrrIDGetFromTwa, LrrIDFromTwa);
+		if (!LrrIDGetFromBS && LrrIDGetFromTwa)
 			SendLrrUID(lk);
 		else
 			SendLrrID(lk);
@@ -3181,6 +3438,9 @@ RTL_TRDBG(2,"LAP RECV sz=%d lrrid=%08x typ=%d/%d(%s) tms=%u rqtdelay=%u\n",
 		break;
 		case	LP_TYPE_LRR_INF_BEACON_DN:
 			SendRadioBeacon(&downpkt,frame + szh,sz - szh);
+		break;
+		case	LP_TYPE_LRR_PKT_MULTICAST_DN:
+			SendRadioClassCMultiCast(&downpkt,frame + szh,sz - szh);
 		break;
 		default :
 		break;
@@ -3347,6 +3607,15 @@ static	int	SendToLrcOrder(t_lrr_pkt *uppkt,u_char *buff,int sz)
 	for	(i = 0 ; i < NbLrc ; i++)
 	{
 		lrc	= i;
+		if (LrrIDGetFromBS && MasterLrc >= 0)	// NFR997
+		{
+			// send to lrc master first
+			if (i == 0)
+				lrc = MasterLrc;
+			else if (i == MasterLrc)	// send also to lrc 0, the master took its place
+				lrc = 0;
+		}
+
 		lk	= &TbLapLrc[lrc];
 		RTL_TRDBG(3,"try to send packet to LRC=%d lrrid=%08x\n",
 					lrc,uppkt->lp_lrrid);
@@ -3370,6 +3639,13 @@ RTL_TRDBG(1,"packet sent to LRC=%d lrrid=%08x by order rssi=%f snr=%f\n",
 		}
 		else
 			RTL_TRDBG(3,"LRC=%d not available\n",lrc);
+
+		if (LrrIDGetFromBS && MasterLrc >= 0)	// NFR997
+		{
+			// restore lrc value for following keepalive treatment
+			if (i == MasterLrc)
+				lrc = i;
+		}
 	}
 
 	// current LRC changes : restore keepalive on new LRC
@@ -3775,6 +4051,7 @@ RTL_TRDBG(9,"AvDvUiCompute p=%p d=%u t=%u idxlrc=%d\n",
 	stat_v1->ls_versMaj		= VersionMaj;
 	stat_v1->ls_versMin		= VersionMin;
 	stat_v1->ls_versRel		= VersionRel;
+	stat_v1->ls_versFix		= VersionFix;
 	stat_v1->ls_LgwInvertPol	= LgwInvertPol;
 	stat_v1->ls_LgwNoCrc		= LgwNoCrc;
 	stat_v1->ls_LgwNoHeader		= LgwNoHeader;
@@ -3846,6 +4123,12 @@ RTL_TRDBG(9,"AvDvUiCompute p=%p d=%u t=%u idxlrc=%d\n",
 
 	stat_v1->ls_gpsUpdateCnt 	= ABS(GpsUpdateCnt - GpsUpdateCntP);
 	GpsUpdateCntP		 	= GpsUpdateCnt;
+#ifdef	TEKTELIC
+	if	(GpsPositionOk)
+		stat_v1->ls_gpsUpdateCnt	= StatRefresh;
+	else
+		stat_v1->ls_gpsUpdateCnt	= 0;
+#endif
 
 	stat_v1->ls_LrrTimeSync		= NtpdStarted();
 	stat_v1->ls_LrrReverseSsh	= CmdCountOpenSsh();
@@ -4051,7 +4334,8 @@ void DoAntsConfigRefresh(int delay, char ** resp)
 	for (i = 0; (i < LgwAntenna) && (i < NB_ANTENNA); i++)
 	{
 		if (resp && *resp) {
-			sprintf(resp_tmp, "chain%d=%d-%d\n", i, AntennaGain[i], CableLoss[i]);
+			sprintf(resp_tmp, "chain%d=%d-%d\n", i, (int)roundf(AntennaGain[i]), (int)roundf(CableLoss[i]));
+			//sprintf(resp_tmp, "chain%d=%.1f-%.1f\n", i, AntennaGain[i], CableLoss[i]);
 			strcat(*resp, resp_tmp);
 		}
 		else {
@@ -4065,8 +4349,13 @@ void DoAntsConfigRefresh(int delay, char ** resp)
 			uppkt.lp_lrrid	= LrrID;
 
 			ants.cf_idxant = i;
-			ants.cf_antgain = AntennaGain[i];
-			ants.cf_cableloss = CableLoss[i];
+			if (AntennaGain[i] || CableLoss[i])
+				ants.cf_use_float = 1;
+
+			ants.cf_antgain = (int8_t)roundf(AntennaGain[i]);
+			ants.cf_cableloss = (int8_t)roundf(CableLoss[i]);
+			ants.cf_antgain_f = AntennaGain[i];
+			ants.cf_cableloss_f = CableLoss[i];
 
 			ants.cf_RX1_tx = TbChannel[1].power;
 			ants.cf_RX1_eirp = GetTxCalibratedEIRP(TbChannel[1].power, AntennaGain[i], CableLoss[i], 0, 0);
@@ -4075,7 +4364,8 @@ void DoAntsConfigRefresh(int delay, char ** resp)
 			ants.cf_RX2_tx = Rx2Channel->power;
 			ants.cf_RX2_eirp = GetTxCalibratedEIRP(Rx2Channel->power, AntennaGain[i], CableLoss[i], 0, 0);
 			}
-			RTL_TRDBG(1, "Antenna config idx=%d, antgain=%d, cableloss=%d, rx1_tx=%d, rx1_eirp=%d, rx2_tx=%d, rx2_eirp=%d\n", i, ants.cf_antgain, ants.cf_cableloss, ants.cf_RX1_tx, ants.cf_RX1_eirp, ants.cf_RX2_tx, ants.cf_RX2_eirp);
+			//RTL_TRDBG(1, "Antenna config idx=%d, antgain=%d, cableloss=%d, rx1_tx=%d, rx1_eirp=%d, rx2_tx=%d, rx2_eirp=%d\n", i, ants.cf_antgain, ants.cf_cableloss, ants.cf_RX1_tx, ants.cf_RX1_eirp, ants.cf_RX2_tx, ants.cf_RX2_eirp);
+			RTL_TRDBG(1, "Antenna config idx=%d, use_float=%d, antgain=%.1f=%d, cableloss=%.1f=%d, rx1_tx=%d, rx1_eirp=%d, rx2_tx=%d, rx2_eirp=%d\n", i, ants.cf_use_float, ants.cf_antgain_f, ants.cf_antgain, ants.cf_cableloss_f, ants.cf_cableloss, ants.cf_RX1_tx, ants.cf_RX1_eirp, ants.cf_RX2_tx, ants.cf_RX2_eirp);
 
 			memcpy (&uppkt.lp_u.lp_config_ants, &ants, sizeof (t_lrr_config_ants));
 			memcpy (buff, &uppkt, szh);
@@ -4160,9 +4450,11 @@ void	DoConfigRefresh(int delay)
 	config.cf_versMaj		= VersionMaj;
 	config.cf_versMin		= VersionMin;
 	config.cf_versRel		= VersionRel;
+	config.cf_versFix		= VersionFix;
 	config.cf_versMajRff		= VersionMajRff;
 	config.cf_versMinRff		= VersionMinRff;
 	config.cf_versRelRff		= VersionRelRff;
+	config.cf_versFixRff		= VersionFixRff;
 	config.cf_rffTime		= RffTime;
 	config.cf_LrxVersion		= LP_LRX_VERSION;
 	config.cf_LgwSyncWord		= LgwSyncWord;
@@ -4682,7 +4974,11 @@ static	void	NeedReboot(int nblrcok)
 	sprintf(cmd,"%s/usr/etc/lrr/autoreboot_last",RootAct);
 	unlink(cmd);
 	f	= fopen(cmd,"w");
-	if	(f)	fclose(f);
+	if	(f)
+	{
+		fprintf(f, "No LRC connection during more than %d s => reboot #%d\n", tm, autorebootcnt);
+		fclose(f);
+	}
 	system("reboot");
 }
 
@@ -4723,6 +5019,14 @@ static void NeedRebootNoUplink(int nbpktuplink)
 	if (autorestartcnt <= cnt_max)
 	{
 		RTL_TRDBG(0, "NeedRebootNoUplink: no radio uplink packet received during %d s or more => restart (%d / %d)\n", tm, autorestartcnt, cnt_max);
+		sprintf(cmd, "%s/usr/etc/lrr/autorestart_last", RootAct);
+		unlink(cmd);
+		f = fopen(cmd, "w");
+		if (f)
+		{
+			fprintf(f, "No radio uplink packet received during %d s => restart (%d / %d)\n", tm, autorestartcnt, cnt_max);
+			fclose(f);
+		}
 		ServiceStop(0);
 		return;
 	}
@@ -4732,7 +5036,11 @@ static void NeedRebootNoUplink(int nbpktuplink)
 	sprintf(cmd, "%s/usr/etc/lrr/autoreboot_last", RootAct);
 	unlink(cmd);
 	f = fopen(cmd, "w");
-	if (f) fclose(f);
+	if (f)
+	{
+		fprintf(f, "No radio uplink packet received => reboot #%d\n", autorebootcnt);
+		fclose(f);
+	}
 	system("reboot");
 }
 
@@ -5018,6 +5326,9 @@ static	void	DoClockSc()
 	nbclock++;
 	if	((nbclock % 30) == 0)
 	{
+#ifdef TEKTELIC
+		GetGpsPositionTektelic();
+#endif
 		nblrcok	= LrcOkCount();
 		if	(AutoRebootTimer > 0)
 		{
@@ -5128,6 +5439,9 @@ static	void	RunStoreQMs()	// function called 10 times per sec
 	if	(StorePktCount <= 0)
 		return;
 	if	(StoreQ == NULL)
+		return;
+	// NFR997: Master lrc not yet identified
+	if	(LrrIDGetFromBS && MasterLrc < 0)
 		return;
 
 //	count % (ceil(10.0 / (float)ReStorePerSec))
@@ -5305,7 +5619,14 @@ static	void	DoInternalEvent(t_imsg *imsg,int *freemsg)
 			int		ret;
 
 			uppkt	= (t_lrr_pkt *)imsg->im_dataptr;
-			ret	= RecvRadioPacket(uppkt,0);
+			// NFR997: store messages until MasterLrc is identified
+			if (LrrIDGetFromBS && MasterLrc == -1)
+			{
+				RTL_TRDBG(3,"Master lrc not yet identified, message will be stored\n");
+				ret = 0;
+			}
+			else
+				ret	= RecvRadioPacket(uppkt,0);
 			if	(ret == 0)
 			{
 				*freemsg	= 0;
@@ -5584,6 +5905,7 @@ void	GpsPositionUpdated(LGW_COORD_T *loc_from_gps)
 }
 #endif
 
+#define	u_int_sizeof(X)	(unsigned int)sizeof((X))
 void	StructSize()
 {
 t_lrr_pkt	pkt;
@@ -5597,24 +5919,24 @@ printf("LP_MACLORA_SIZE_MAX=%d (IEC104-PREHEADER-sizeof(lp_u.lp_radio)-10)\n",
 printf("LP_DATA_CMD_LEN=%d (IEC104-PREHEADER-10)\n",
 				LP_DATA_CMD_LEN);
 
-printf("sizeof(t_lrr_pkt.lp_u)=%d\n",sizeof(pkt.lp_u));
-printf("sizeof(t_lrr_pkt.lp_u.lp_radio)=%d\n",sizeof(pkt.lp_u.lp_radio));
+printf("sizeof(t_lrr_pkt.lp_u)=%d\n",u_int_sizeof(pkt.lp_u));
+printf("sizeof(t_lrr_pkt.lp_u.lp_radio)=%d\n",u_int_sizeof(pkt.lp_u.lp_radio));
 #ifdef	LP_TP31
-printf("sizeof(t_lrr_pkt.lp_u.lp_radio_p1)=%d\n",sizeof(pkt.lp_u.lp_radio_p1));
-printf("sizeof(t_lrr_pkt.lp_u.lp_sent_indic)=%d\n",sizeof(pkt.lp_u.lp_sent_indic));
+printf("sizeof(t_lrr_pkt.lp_u.lp_radio_p1)=%d\n",u_int_sizeof(pkt.lp_u.lp_radio_p1));
+printf("sizeof(t_lrr_pkt.lp_u.lp_sent_indic)=%d\n",u_int_sizeof(pkt.lp_u.lp_sent_indic));
 #endif
-printf("sizeof(t_lrr_pkt.lp_u.lp_stat_v1)=%d\n",sizeof(pkt.lp_u.lp_stat_v1));
-printf("sizeof(t_lrr_pkt.lp_u.lp_config)=%d\n",sizeof(pkt.lp_u.lp_config));
-printf("sizeof(t_lrr_pkt.lp_u.lp_config_lrc)=%d\n",sizeof(pkt.lp_u.lp_config_lrc));
-printf("sizeof(t_lrr_pkt.lp_u.lp_wan)=%d\n",sizeof(pkt.lp_u.lp_wan));
-printf("sizeof(t_lrr_pkt.lp_u.lp_wan_lrc)=%d\n",sizeof(pkt.lp_u.lp_wan_lrc));
-printf("sizeof(t_lrr_pkt.lp_u.lp_rfcell)=%d\n",sizeof(pkt.lp_u.lp_rfcell));
+printf("sizeof(t_lrr_pkt.lp_u.lp_stat_v1)=%d\n",u_int_sizeof(pkt.lp_u.lp_stat_v1));
+printf("sizeof(t_lrr_pkt.lp_u.lp_config)=%d\n",u_int_sizeof(pkt.lp_u.lp_config));
+printf("sizeof(t_lrr_pkt.lp_u.lp_config_lrc)=%d\n",u_int_sizeof(pkt.lp_u.lp_config_lrc));
+printf("sizeof(t_lrr_pkt.lp_u.lp_wan)=%d\n",u_int_sizeof(pkt.lp_u.lp_wan));
+printf("sizeof(t_lrr_pkt.lp_u.lp_wan_lrc)=%d\n",u_int_sizeof(pkt.lp_u.lp_wan_lrc));
+printf("sizeof(t_lrr_pkt.lp_u.lp_rfcell)=%d\n",u_int_sizeof(pkt.lp_u.lp_rfcell));
 
-printf("sizeof(t_lrr_pkt.lp_u.lp_shell_cmd)=%d\n",sizeof(pkt.lp_u.lp_shell_cmd));
-printf("sizeof(t_lrr_pkt.lp_u.lp_cmd_resp)=%d\n",sizeof(pkt.lp_u.lp_cmd_resp));
+printf("sizeof(t_lrr_pkt.lp_u.lp_shell_cmd)=%d\n",u_int_sizeof(pkt.lp_u.lp_shell_cmd));
+printf("sizeof(t_lrr_pkt.lp_u.lp_cmd_resp)=%d\n",u_int_sizeof(pkt.lp_u.lp_cmd_resp));
 
-printf("max network part size of t_lrr_pkt=%d\n",offsetof(t_lrr_pkt,lp_payload));
-printf("sizeof(t_lrr_pkt)=%d (memory only)\n",sizeof(pkt));
+printf("max network part size of t_lrr_pkt=%d\n",(u_int)offsetof(t_lrr_pkt,lp_payload));
+printf("sizeof(t_lrr_pkt)=%d (memory only)\n",u_int_sizeof(pkt));
 
 printf("static data size of t_imsg=%d\n",IMSG_DATA_SZ);
 }
@@ -5821,11 +6143,24 @@ int	NtpdStarted()
 }
 #endif
 
-#ifdef	NATRBPI
+#if defined(NATRBPI_USB)
 #define	SYSTEM_DEFINED
 void	InitSystem()
 {
-	System	= "natrbpi";
+	System	= "natrbpi_usb_v1.0";
+}
+
+int	NtpdStarted()
+{
+	return	NtpdStartedGeneric("/var/run/ntpd.pid");	// NATRBPI
+}
+#endif
+
+#if defined(RBPI_V1_0)
+#define	SYSTEM_DEFINED
+void	InitSystem()
+{
+	System	= "rbpi_v1.0";
 }
 
 int	NtpdStarted()
@@ -5860,18 +6195,60 @@ int	NtpdStarted()
 }
 #endif
 
-#if defined	(MTAC) || defined (MTAC_USB)
+#if defined	(MTAC_V1_0)
 #define	SYSTEM_DEFINED
 void	InitSystem()
 {
-	System	= "mtac";
+	System	= "mtac_v1.0";
 }
 
 int	NtpdStarted()
 {
-	return	NtpdStartedGeneric("/var/run/ntp.pid");			// MTAC
+	return	NtpdStartedGeneric("/var/run/ntp.pid");			// MTAC CONDUIT SPI V1.0
 }
 #endif
+
+#if defined	(MTAC_V1_5)
+#define	SYSTEM_DEFINED
+void	InitSystem()
+{
+	System	= "mtac_v1.5";
+}
+
+int	NtpdStarted()
+{
+	return	NtpdStartedGeneric("/var/run/ntp.pid");			// MTAC CONDUIT SPI V1.5
+}
+#endif
+
+
+#if defined	(MTAC_REFRESH_V1_5)
+#define	SYSTEM_DEFINED
+void	InitSystem()
+{
+	System	= "mtac_refresh_v1.5";
+}
+
+int	NtpdStarted()
+{
+	return	NtpdStartedGeneric("/var/run/ntp.pid");			// MTAC CONDUIT REFRESH V1.5 (GPS)
+}
+#endif
+
+
+#if defined (MTAC_USB)
+#define	SYSTEM_DEFINED
+void	InitSystem()
+{
+	System	= "mtac_usb_v1.0";
+}
+
+int	NtpdStarted()
+{
+	return	NtpdStartedGeneric("/var/run/ntp.pid");			// MTAC CONDUIT USB V1.0
+}
+#endif
+
 
 #ifdef	MTCAP
 #define	SYSTEM_DEFINED
@@ -5992,9 +6369,9 @@ int     NtpdStarted()
 #ifndef	SYSTEM_DEFINED
 void    InitSystem()
 {
-#warning "you are compiling the LRR for linux-x86 generic target system"
+#warning "you are compiling the LRR for linux 32/64bits generic target system"
 #warning "this implies the use of a Semtech Picocell connected with ttyACMx"
-        System  = "linux-x86";
+        System  = "linux";
 }
 
 int     NtpdStarted()
@@ -6302,11 +6679,40 @@ RTL_TRDBG(1,"decrypt '%s' ret=%d ERROR\n",var,ret);
 	rtl_htblWalk(htbl,CBHtWalk,NULL);
 }
 
+void GetConfigFromBootSrv()
+{
+	char	buf[256];
+	int	ret = 1;
+	char	*addr, *port, *user, *pwd;
+
+	LrrIDGetFromBS = 1;
+
+	addr = CfgStr(HtVarLrr, "bootserver", -1, "addr", "0.0.0.0");
+	port = CfgStr(HtVarLrr, "bootserver", -1, "port", "2404");
+	user = CfgStr(HtVarLrr, "bootserver", -1, "user", "actility");
+	pwd = CfgStr(HtVarLrr, "bootserver", -1, "pass", "");
+
+	// execute shell to get config from bootserver
+	RTL_TRDBG(0,"Get config from bootserver '%s:%s'...\n", addr, port);
+	while (ret)
+	{
+		sprintf(buf, "$ROOTACT/lrr/com/cmd_shells/treatbootsrv.sh -A %s -P %s -U %s -W %s",
+			addr, port, user, pwd);
+		ret = system(buf);
+		if (ret)
+		{
+			RTL_TRDBG(0,"Getting config from bootserver failed, retry in 30 seconds\n");
+			sleep(30);
+		}
+	}
+}
+
 int	main(int argc,char *argv[])
 {
 	int	i;
 	char	*pt = lrr_whatStr+18;	// TODO
 	char	* lrr_base_version = NULL;
+	char	deftrdir[256];
 
 	MainThreadId	= pthread_self();
 
@@ -6325,13 +6731,15 @@ int	main(int argc,char *argv[])
 
 	clock_gettime(CLOCK_REALTIME,&Currtime);
 
-	if	(sscanf(pt,"%d.%d.%d",&VersionMaj,&VersionMin,&VersionRel) != 3)
-	{
-	}
+	sscanf(pt,"%d.%d.%d_%d",&VersionMaj,&VersionMin,&VersionRel,&VersionFix);
 
-	lrr_base_version = calloc(12, sizeof (char));
+	lrr_base_version = calloc(128, sizeof (char));
 	sprintf(lrr_base_version,"%d.%d.%d",VersionMaj, VersionMin, VersionRel);
 	setenv("LRR_VERSION", strdup(lrr_base_version), 1);
+	free(lrr_base_version);
+	lrr_base_version = calloc(128, sizeof (char));
+	sprintf(lrr_base_version,"%d",VersionFix);
+	setenv("LRR_FIXLEVEL", strdup(lrr_base_version), 1);
 	free(lrr_base_version);
 
 #ifdef _HALV_COMPAT
@@ -6378,15 +6786,16 @@ int	main(int argc,char *argv[])
 	{
 #ifdef	WITH_TTY
 		uint8_t uid[8];  //unique id
-		if	(lgw_connect(false) == LGW_REG_SUCCESS)
+		if	(lgw_connect(TtyDevice) == LGW_REG_SUCCESS)
 		{
-                	lgw_reg_GetUniqueId(&uid[0]);
+                	lgw_mcu_get_unique_id(&uid[0]);
 			printf("%.2x%.2x%.2x%.2x%.2x%.2x%.2x%.2x\n",
 				uid[0], uid[1], uid[2], uid[3], 
 				uid[4], uid[5], uid[6], uid[7]);
 			exit(0);
 		}
-		fprintf(stderr,"--stpicoid chipid error\n");
+		fprintf(stderr,"--stpicoid chipid error on tty link %s\n",
+			TtyDevice);
 		exit(1);
 #endif
 		fprintf(stderr,"--stpicoid not supported\n");
@@ -6471,6 +6880,15 @@ int	main(int argc,char *argv[])
 
 	rtl_init();
 
+	// Activate traces before reading tracelevel in config to see startup messages
+	rtl_tracemutex();
+	rtl_tracelevel(1);
+	rtl_tracesizemax(TraceSize);
+	snprintf(deftrdir,sizeof(deftrdir)-1,"%s/%s",RootAct,"var/log/lrr/TRACE.log");
+	deftrdir[sizeof(deftrdir)-1] = '\0';
+        rtl_tracerotate(deftrdir);
+	RTL_TRDBG(0,"Traces activated for startup\n");
+
 	HtVarLrr	= rtl_htblCreateSpec(25,NULL,
 						HTBL_KEY_STRING|HTBL_FREE_DATA);
 
@@ -6493,6 +6911,7 @@ int	main(int argc,char *argv[])
 		TraceLevel	= 3;
 		rtl_tracelevel(TraceLevel);
 		LoadConfigDefine(0,1);
+		LoadConfigBootSrv(1);
 		LoadConfigLrr(0,1);
 		LoadConfigLgw(0);
 		LoadConfigChannel(0);
@@ -6529,6 +6948,7 @@ int	main(int argc,char *argv[])
 		TraceLevel	= 0;
 		rtl_tracelevel(TraceLevel);
 		LoadConfigDefine(0,1);
+		LoadConfigBootSrv(1);
 		LoadConfigLrr(0,1);
 		LoadConfigLgw(0);
 		LoadConfigChannel(0);
@@ -6677,6 +7097,13 @@ int	main(int argc,char *argv[])
 	LedConfigure();
 #endif
 
+	// if bootserver.ini found, activate NFR997
+	if (LoadConfigBootSrv(0))
+	{
+		LoadConfigDefine(0,0);
+		GetConfigFromBootSrv();
+	}
+
 	MainTbPoll	= rtl_pollInit();
 	MainQ		= rtl_imsgInitIq();
 	LgwQ		= rtl_imsgInitIq();
@@ -6727,6 +7154,18 @@ int	main(int argc,char *argv[])
 #endif
 	RTL_TRDBG(0,"lrrid=%08x lrridext=%04x lrridpref=%02x\n",
 		LrrID,LrrIDExt,LrrIDPref);
+
+	if (TraceStdout && *TraceStdout)
+	{
+		if (!freopen(TraceStdout, "w", stdout))
+		{
+			RTL_TRDBG(0,"stdout can't be redirected to '%s' !\n", TraceStdout);
+		}
+		else
+		{
+			RTL_TRDBG(0,"stdout redirected to '%s'\n", TraceStdout);
+		}
+	}
 
 	LoadConfigLgw(0);
 	LoadConfigChannel(0);

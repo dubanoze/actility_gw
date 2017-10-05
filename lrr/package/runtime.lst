@@ -1,3 +1,5 @@
+lrr/base/SYSTEM
+lrr/base/TARGET
 lrr/config/custom.ini.ex
 lrr/config/defines.ini
 lrr/config/channels_eu868.ini
@@ -10,6 +12,8 @@ lrr/config/channels_us915.ini
 lrr/config/channels_us915h8.ini
 lrr/config/channels_kr920.ini
 lrr/config/channels_as923.ini
+lrr/config/channels_cn779.ini
+lrr/config/channels_cn470.ini
 lrr/config/lrr.ini
 lrr/config/lgw_eu868.ini
 lrr/config/lgw_eu868_2015.ini
@@ -25,6 +29,8 @@ lrr/config/lgwx8_eu868_2015.ini
 lrr/config/lgwx8_sg920.ini
 lrr/config/lgwx8_tw920.ini
 lrr/config/lgwx8_us915.ini
+lrr/config/lgwx8_cn779.ini
+lrr/config/lgwx8_cn470.ini
 lrr/config/lowlvlgw.ini
 lrr/config/lowlvlgw_wirmav2.ini
 lrr/config/lowlvlgw_wirmams.ini
@@ -37,7 +43,10 @@ lrr/config/lowlvlgw_fcloc.ini
 lrr/config/lowlvlgw_wirmana.ini
 lrr/config/lowlvlgw_tektelic.ini
 lrr/config/lowlvlgw_gemtek.ini
-lrr/config/lowlvlgw_mtac.ini
+lrr/config/lowlvlgw_mtac_v1.0.ini
+lrr/config/lowlvlgw_mtac_v1.5.ini
+lrr/config/lowlvlgw_mtac_refresh_v1.5.ini
+lrr/config/lowlvlgw_mtac_usb_v1.0.ini
 lrr/config/lowlvlgw_mtcap.ini
 lrr/config/lgwms_eu868.ini
 lrr/config/lgwms_eu868_2015.ini
@@ -107,6 +116,8 @@ lrr/com/cmd_shells/netcatlog.sh
 lrr/com/cmd_shells/dntimezone.sh
 lrr/com/cmd_shells/getuid.sh
 lrr/com/cmd_shells/vinfos.sh
+lrr/com/cmd_shells/exportlog.sh
+lrr/com/cmd_shells/treatbootsrv.sh
 lrr/com/cmd_shells/wirmav2/iptablesoff.sh
 lrr/com/cmd_shells/wirmav2/iptableson.sh
 lrr/com/cmd_shells/wirmav2/lockrff.sh
@@ -185,7 +196,10 @@ lrr/com/cmd_shells/mtac_usb_v1.0/ps.sh
 lrr/com/cmd_shells/mtac_v1.0/rfscanv1.sh
 lrr/com/cmd_shells/mtac_v1.0/ps.sh
 lrr/com/cmd_shells/mtac_v1.5/ps.sh
+lrr/com/cmd_shells/mtac_refresh_v1.5/ps.sh
 lrr/com/cmd_shells/mtcap/ps.sh
+lrr/com/cmd_shells/natrbpi_usb_v1.0/closessh.sh
+lrr/com/cmd_shells/rbpi_v1.0/closessh.sh
 lrr/com/_parameters.sh
 lrr/com/_functions.sh
 lrr/com/_afterupgrade.sh

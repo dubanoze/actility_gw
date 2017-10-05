@@ -57,7 +57,7 @@
 
 #include "timeoper.h"
 
-#if defined(MTAC_USB)
+#if defined(MTAC_USB) || defined(NATRBPI_USB)
 #define LGW_RF_TX_ENABLE        { true, false }  /* radio B TX not connected*/
 #define LGW_RF_CLKOUT           { true, true }   /* both radios have clkout enabled */
 #endif
@@ -87,6 +87,7 @@ int Gps_ref_valid;
 
 struct timespec	LgwCurrUtcTime;		// last UTC + nsec computation
 struct timespec	LgwBeaconUtcTime;	// last beacon
+struct timespec	LgwClassCUtcTime;	// last ClassC
 time_t		LgwTmmsUtcTime;		// tmms mono of the last UTC/GPS
 
 static	int	_LgwStarted;
@@ -616,9 +617,10 @@ static	int LgwConfigureLut(FILE *f,struct lgw_tx_gain_lut_s *txlut,int config)
 #endif
 
 #ifdef USELIBLGW3
-int8_t GetTxCalibratedEIRP(int8_t tx_requested, int8_t antenna_gain, int8_t cable_loss, uint8_t board, uint8_t rfc)
+int8_t GetTxCalibratedEIRP(int8_t tx_requested, float antenna_gain, float cable_loss, uint8_t board, uint8_t rfc)
 {
-	int8_t	tx_found, tx_tmp;
+	int8_t	tx_found;
+	float	tx_tmp;
 	int	i, nb_lut_max;
 	struct lgw_tx_gain_lut_s	txlut;
 
@@ -629,14 +631,14 @@ int8_t GetTxCalibratedEIRP(int8_t tx_requested, int8_t antenna_gain, int8_t cabl
 	tx_found = txlut.lut[0].rf_power; /* If requested value is less than the lowest LUT power value */
 	for (i = (nb_lut_max-1); i >= 0; i--)
 	{
-		if ( tx_tmp >= txlut.lut[i].rf_power)
+		if ( tx_tmp >= (float)txlut.lut[i].rf_power)
 		{
 			tx_found = txlut.lut[i].rf_power;
 			break;
 		}
 	}
 	RTL_TRDBG(1,"LUT(%d) => %d\n",tx_tmp,tx_found);
-	return (tx_found + antenna_gain - cable_loss);
+	return ((int)roundf((float)tx_found + antenna_gain - cable_loss));
 }
 #else
 int8_t GetTxCalibratedEIRP(int8_t tx_requested, int8_t antenna_gain, int8_t cable_loss, uint8_t board, uint8_t rfc)
@@ -702,12 +704,13 @@ int	LgwConfigure(int hot,int config)
 #ifdef	WITH_TTY
 	{
 		uint8_t uid[8];  //unique id
-		if	(lgw_connect(false) != LGW_REG_SUCCESS)
+		if	(lgw_connect(TtyDevice) != LGW_REG_SUCCESS)
 		{
-			RTL_TRDBG(0,"Can not connect to board via tty link \n");
+			RTL_TRDBG(0,"Can not connect to board via tty link %s\n"
+				,TtyDevice);
 			return	-1;
 		}
-                lgw_reg_GetUniqueId(&uid[0]);
+                lgw_mcu_get_unique_id(&uid[0]);
 		RTL_TRDBG(1,"stpico gw id: '%.2x%.2x%.2x%.2x%.2x%.2x%.2x%.2x'\n",
 			uid[0], uid[1], uid[2], uid[3], uid[4], uid[5], uid[6], uid[7]);
 	}
@@ -1176,7 +1179,7 @@ RTL_TRDBG(1,"PKT RECV tms=%09u tus=%09u if=%d status=%s sz=%d freq=%d mod=0x%02x
 			uppkt.lp_gss	= (time_t)butc.tv_sec;
 			uppkt.lp_gns	= (u_int)butc.tv_nsec;
 
-RTL_TRDBG(1,"LGW PPS DATE eutc=(%09u,%ums) butc=(%09u,%09u) diff=%d tus=%u\n",
+RTL_TRDBG(1,"LGW PPS DATE eutc=(%09u,%03ums) butc=(%09u,%09u) diff=%d tus=%u\n",
 				lutc.tv_sec,lutc.tv_nsec/1000000,
 				butc.tv_sec,butc.tv_nsec,
 				destim,p->count_us);
@@ -1348,6 +1351,11 @@ static	int	SendPacketNow(int blo,t_lrr_pkt *downpkt,T_lgw_pkt_tx_t txpkt)
 				SetIndic(downpkt,0,-1,-1,LP_CB_LBT);
 				goto	stop_by_blt;
 			}
+			if	(downpkt->lp_classcmc)
+			{
+				SetIndic(downpkt,0,-1,-1,LP_CB_LBT);
+				goto	stop_by_blt;
+			}
 			if	(Rx2Channel && Rx2Channel->freq_hz == txpkt.freq_hz)
 				SetIndic(downpkt,0,-1,LP_C2_LBT,-1);
 			else
@@ -1368,6 +1376,11 @@ stop_by_blt:
 	{
 		LgwBeaconSentCnt++;
 		LgwBeaconLastDeliveryCause	= 0;
+	}
+	if	(downpkt->lp_classcmc)
+	{
+		LgwClassCSentCnt++;
+		LgwClassCLastDeliveryCause	= 0;
 	}
 	LgwNbPacketSend++;
 	lgw_status(TX_STATUS,&txstatus);
@@ -1432,6 +1445,7 @@ RTL_TRDBG(1,"PKT SEND tms=%09u/%d rfchain=%d status=%d sz=%d left=%d freq=%d mod
 		u_char		*pt;
 		char		*pktclass = "";
 
+		memset	(src,0,sizeof(src));
 		memset	(&mf,0,sizeof(mf));
 		if	(downpkt->lp_beacon == 0)
 		{
@@ -1449,6 +1463,11 @@ RTL_TRDBG(1,"PKT SEND classb period=%d sidx=%d sdur=%f window(%09u,%09u) %d/%d/%
 			((downpkt->lp_period-1)*128)+downpkt->lp_gss0,
 			downpkt->lp_gns0,
 			downpkt->lp_idxtry,downpkt->lp_nbtry,downpkt->lp_maxtry);
+			}
+			if	(downpkt->lp_classcmc)
+			{
+				diff		= 0;
+				pktclass	= "classcmc";
 			}
 		}
 		else
@@ -1507,7 +1526,7 @@ static	void	SetTrigTarget(t_lrr_pkt *downpkt,T_lgw_pkt_tx_t *txpkt)
 RTL_TRDBG(0,"PKT SEND beacon error lgw_utc2cnt() from (%u,%09u)\n",
 			downpkt->lp_gss,downpkt->lp_gns);
 			LgwBeaconLastDeliveryCause	= LP_C1_DELAY;
-			return;	// TODO
+			return;
 		}
 		LgwEstimTrigCnt(&trig_estim);
 		txpkt->tx_mode 	= ON_GPS;
@@ -1516,6 +1535,36 @@ RTL_TRDBG(0,"PKT SEND beacon error lgw_utc2cnt() from (%u,%09u)\n",
 				ABS(txpkt->count_us - trig_estim ) / 1000;
 
 RTL_TRDBG(1,"PKT SEND beacon trigtarget=%u trigonpps=%u trigestim=%u diffestim=%d pkt=(%u,%09u) utc=(%u,%09u)\n",
+		txpkt->count_us,Time_reference_gps.count_us,trig_estim,
+		downpkt->lp_lgwdelay,downpkt->lp_gss,downpkt->lp_gns,
+		Time_reference_gps.utc.tv_sec,Time_reference_gps.utc.tv_nsec);
+
+		return;
+	}
+	if	(downpkt->lp_classcmc)
+	{
+		int	ret;
+		uint32_t trig_tstamp;
+		uint32_t trig_estim;
+		struct timespec utc_time;
+
+		utc_time.tv_sec	= downpkt->lp_gss;
+		utc_time.tv_nsec= downpkt->lp_gns;
+		ret	= lgw_utc2cnt(Time_reference_gps,utc_time,&trig_tstamp);
+		if	(ret != LGW_GPS_SUCCESS)
+		{
+RTL_TRDBG(0,"PKT SEND classcmc error lgw_utc2cnt() from (%u,%09u)\n",
+			downpkt->lp_gss,downpkt->lp_gns);
+			LgwClassCLastDeliveryCause	= LP_C1_DELAY;
+			return;
+		}
+		LgwEstimTrigCnt(&trig_estim);
+		txpkt->tx_mode 	= ON_GPS;
+		txpkt->count_us	= trig_tstamp - Sx13xxStartDelay;
+		downpkt->lp_lgwdelay	=
+				ABS(txpkt->count_us - trig_estim ) / 1000;
+
+RTL_TRDBG(1,"PKT SEND classcmc trigtarget=%u trigonpps=%u trigestim=%u diffestim=%d pkt=(%u,%09u) utc=(%u,%09u)\n",
 		txpkt->count_us,Time_reference_gps.count_us,trig_estim,
 		downpkt->lp_lgwdelay,downpkt->lp_gss,downpkt->lp_gns,
 		Time_reference_gps.utc.tv_sec,Time_reference_gps.utc.tv_nsec);
@@ -1539,7 +1588,7 @@ RTL_TRDBG(1,"PKT SEND beacon trigtarget=%u trigonpps=%u trigestim=%u diffestim=%
 		{
 RTL_TRDBG(0,"PKT SEND classb error lgw_utc2cnt() from (%u,%09u)\n",
 			downpkt->lp_gss,downpkt->lp_gns);
-			return;	// TODO
+			return;
 		}
 		LgwEstimTrigCnt(&trig_estim);
 		txpkt->tx_mode 	= TIMESTAMPED;
@@ -1728,7 +1777,8 @@ static	int	Rx1StopByLbtTryRx2(t_imsg *msg,t_lrr_pkt *downpkt)
 	{	// not stopped
 		return	0;
 	}
-	if	(downpkt->lp_delay == 0 || downpkt->lp_beacon || downpkt->lp_classb)
+	if	(downpkt->lp_delay == 0 || downpkt->lp_beacon 
+		|| downpkt->lp_classb || downpkt->lp_classcmc)
 	{	// classC ou beacon ou classB
 		return	0;
 	}
@@ -1801,7 +1851,7 @@ int	LgwDoSendPacket(time_t now)
 			
 
 RTL_TRDBG(1,
-"PKT SEND beacon postpone=%d/%d pkt=(%u,%09u) eutc=(%u,%ums) butc=(%u,%09u) diff=%d\n",
+"PKT SEND beacon postpone=%d/%d pkt=(%u,%09u) eutc=(%u,%03ums) butc=(%u,%09u) diff=%d\n",
 					delay,odelay,
 					downpkt->lp_gss,downpkt->lp_gns,
 					utc->tv_sec,utc->tv_nsec/1000000,
@@ -1810,6 +1860,7 @@ RTL_TRDBG(1,
 			if	(delay <= 0)
 			{
 				RTL_TRDBG(0,"too old beacon %dms\n",delay);
+				LgwBeaconRequestedLateCnt++;
 				LgwBeaconLastDeliveryCause	= LP_C1_DELAY;
 				return	0;
 			}
@@ -1820,10 +1871,61 @@ RTL_TRDBG(1,
 			rtl_imsgAddDelayed(LgwSendQ,msg,delay);
 			return	0;
 		}
-#endif
 		if	(downpkt->lp_beacon && downpkt->lp_delay != 0)
 		{
 			RTL_TRDBG(1,"PKT SEND beacon retrieved\n");
+			goto	send_pkt;
+		}
+		if	(downpkt->lp_classcmc && downpkt->lp_delay == 0)
+		{
+			int		destim;
+			int		odelay;
+			int		delay;	// postpone delay
+			struct timespec *utc;
+
+			// delayed thread/board and use UTC given by GPS+estim
+			struct timespec lutc;
+			struct timespec butc;
+			utc	= &lutc;
+			LgwEstimUtc(utc);
+			destim	= LgwEstimUtcBoard(&butc);
+			if	(destim != LGW_HAL_SUCCESS)
+			{
+				RTL_TRDBG(0,"can not estim UTC board for classcmc\n");
+				LgwClassCLastDeliveryCause	= LP_C1_DELAY;
+				return	0;
+			}
+			destim	= LgwDiffMsUtc(&butc,&lutc);
+			delay	= LgwPacketDelayMsFromUtc(downpkt,&butc);
+			odelay	= delay;
+			delay	= odelay - 300;
+			
+
+RTL_TRDBG(1,
+"PKT SEND classcmc postpone=%d/%d pkt=(%u,%09u) eutc=(%u,%03ums) butc=(%u,%09u) diff=%d\n",
+					delay,odelay,
+					downpkt->lp_gss,downpkt->lp_gns,
+					utc->tv_sec,utc->tv_nsec/1000000,
+					butc.tv_sec,butc.tv_nsec,destim);
+
+			if	(delay <= 0)
+			{
+				RTL_TRDBG(0,"too old classcmc %dms\n",delay);
+				LgwClassCRequestedLateCnt++;
+				LgwClassCLastDeliveryCause	= LP_C1_DELAY;
+				return	0;
+			}
+
+			downpkt->lp_trip	= 0;
+			downpkt->lp_delay	= delay;
+			downpkt->lp_lgwdelay	= 1;
+			rtl_imsgAddDelayed(LgwSendQ,msg,delay);
+			return	0;
+		}
+#endif
+		if	(downpkt->lp_classcmc && downpkt->lp_delay != 0)
+		{
+			RTL_TRDBG(1,"PKT SEND classcmc retrieved\n");
 			goto	send_pkt;
 		}
 #ifdef	WITH_GPS
@@ -1856,7 +1958,7 @@ RTL_TRDBG(1,
 			}
 
 RTL_TRDBG(1,
-	"PKT SEND classb postpone=%d/%d period=%d sidx=%d sdur=%f pkt=(%u,%09u) eutc=(%u,%ums)\n",
+	"PKT SEND classb postpone=%d/%d period=%d sidx=%d sdur=%f pkt=(%u,%09u) eutc=(%u,%03ums)\n",
 			delay,odelay,
 			downpkt->lp_period,downpkt->lp_sidx,downpkt->lp_sdur,
 			downpkt->lp_gss,downpkt->lp_gns,
@@ -1922,11 +2024,15 @@ send_pkt:
 		}
 		else
 		{
-RTL_TRDBG(1,"SendPacket() beacon=%d classb=%d classc=%d rx2=%d lbt=%d error => %d\n",
+RTL_TRDBG(1,"SendPacket() beacon=%d classb=%d classc=%d classcmc=%d rx2=%d lbt=%d error => %d\n",
 			downpkt->lp_beacon,downpkt->lp_classb,
 			downpkt->lp_delay == 0 ? 1 : 0,
+			downpkt->lp_classcmc,
 			downpkt->lp_rx2lrr,
 			downpkt->lp_stopbylbt,ret);
+
+			if (downpkt->lp_beacon || downpkt->lp_classcmc)
+				goto	set_failure;
 
 			if (LgwLbtEnable && downpkt->lp_delay == 0 
 						&& downpkt->lp_stopbylbt)
@@ -1942,6 +2048,7 @@ RTL_TRDBG(1,"SendPacket() beacon=%d classb=%d classc=%d rx2=%d lbt=%d error => %
 				rtl_imsgAddDelayed(LgwSendQ,msg,950);
 				return	0;
 			}
+set_failure:
 			SetIndic(downpkt,0,-1,-1,-1);
 		}
 		SendIndicToLrc(downpkt);

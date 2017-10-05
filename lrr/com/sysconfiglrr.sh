@@ -48,6 +48,9 @@ checkSupportUser()
 	if [ "$SYSTEM" = "linux-x86" ]; then
 		return
 	fi
+	if [ "$SYSTEM" = "linux-x86_64" ]; then
+		return
+	fi
 
 	# create /etc/shells if required
 	if [ ! -f "/etc/shells" ]
@@ -369,8 +372,15 @@ then
 	fi
 	if	[ ! -z "$(uname -a | grep -i raspberrypi)" ]
 	then
-		echo	"System : natrbpi"
-		SYSTEM=natrbpi
+		#If this is a SPI model then there will be  /dev/spidev0.0 and /dev/spidev0.1 devices
+		if	[ ! -z "$(ls /dev/spidev*)" ]
+		then
+			echo	"System : rbpi_v1.0"
+			SYSTEM=rbpi_v1.0
+		else
+			echo	"System : natrbpi_usb_v1.0"
+			SYSTEM=natrbpi_usb_v1.0
+		fi
 	fi
 	if	[ ! -z "$(uname -a | grep -i Router)" ]
 	then
@@ -407,8 +417,13 @@ then
 		SYSTEM=mtac
 		if [ ! -z "$(mts-io-sysfs show lora/hw-version | grep -i MTAC-LORA-1.5)" ]
 		then
-			# LoRa V1.5, must be SPI
-			SYSTEM=mtac_v1.5
+			# LoRa V1.5, must be SPI, Refresh or not? Refresh GWs have GPS capability
+			if [ ! -z "$(mts-io-sysfs show capability/gps | grep -i 1)" ]
+			then
+				SYSTEM=mtac_refresh_v1.5
+			else
+				SYSTEM=mtac_v1.5
+			fi
 		else
 			#Not a V1.5 so it may be 1.0, check LoRa version just to be sure
 			if [ ! -z "$(mts-io-sysfs show lora/product-id | grep -i 'H\|SPI')" ] && [ ! -z "$(mts-io-sysfs show lora/hw-version | grep -i MTAC-LORA-1.0)" ]
@@ -486,7 +501,7 @@ date > $ROOTACT/usr/etc/lrr/sysconfig_done
 #
 # add following lines in /etc/profile if not present
 #
-if [ "$SYSTEM" != "wirmams" -a "$SYSTEM" != "wirmaar" -a "$SYSTEM" != "wirmana"  -a "$SYSTEM" != "linux-x86" ]
+if [ "$SYSTEM" != "wirmams" -a "$SYSTEM" != "wirmaar" -a "$SYSTEM" != "wirmana"  -a "$SYSTEM" != "linux-x86" -a "$SYSTEM" != "linux-x86_64" ]
 then
 	PROF_LINE="export ROOTACT=${ROOTACT}"
 	PATH_LINE="export PATH=\$PATH:\$ROOTACT/lrr/com"
@@ -595,11 +610,25 @@ case $SYSTEM in
 		checkSupportUserWirmaNA
 		addIptables_wirmana
 	;;
-	natrbpi)	#RaspBerry
-		[ -z "$SERIALMODE" ] && ask SERIALMODE "Choose the communication mode" usb spi
-		[ -z "$BOARDTYPE" ] && ask BOARDTYPE "Choose the board type (1 SX13 or 8 SX13)" x1 x8
-		echo "SERIALMODE=$SERIALMODE" >> $ROOTACT/usr/etc/lrr/_parameters.sh
-		echo "BOARDTYPE=$BOARDTYPE" >> $ROOTACT/usr/etc/lrr/_parameters.sh
+	rbpi_v1.0)	#RaspBerry SPI V1.0
+		echo "SERIALMODE=spi" >> $ROOTACT/usr/etc/lrr/_parameters.sh
+		echo "BOARDTYPE=x1" >> $ROOTACT/usr/etc/lrr/_parameters.sh
+		echo "SERVICELRR=/etc/init.d/lrr" >> $ROOTACT/usr/etc/lrr/_parameters.sh
+		cat $ROOTACT/lrr/com/lrrservice.sh | sed "s?_REPLACEWITHROOTACT_?$ROOTACT?" > /etc/init.d/lrr
+		chmod +x /etc/init.d/lrr
+		if [ ! -f "/etc/rc2.d/S90lrr" ]
+		then
+			ln -s /etc/init.d/lrr /etc/rc2.d/S90lrr
+			ln -s /etc/init.d/lrr /etc/rc3.d/S90lrr
+			ln -s /etc/init.d/lrr /etc/rc4.d/S90lrr
+			ln -s /etc/init.d/lrr /etc/rc5.d/S90lrr
+			ln -s /etc/init.d/lrr /etc/rc0.d/K01lrr
+			ln -s /etc/init.d/lrr /etc/rc6.d/K01lrr
+		fi
+	;;
+	natrbpi_usb_v1.0)	#RaspBerry USB V1.0
+		echo "SERIALMODE=usb" >> $ROOTACT/usr/etc/lrr/_parameters.sh
+		echo "BOARDTYPE=x1" >> $ROOTACT/usr/etc/lrr/_parameters.sh
 		echo "SERVICELRR=/etc/init.d/lrr" >> $ROOTACT/usr/etc/lrr/_parameters.sh
 		cat $ROOTACT/lrr/com/lrrservice.sh | sed "s?_REPLACEWITHROOTACT_?$ROOTACT?" > /etc/init.d/lrr
 		chmod +x /etc/init.d/lrr
@@ -737,7 +766,7 @@ case $SYSTEM in
 		checkSupportUser
 	;;
 
-	mtac_v1.0|mtac_v1.5|mtcap|mtac)		#Multitech MTAC V1.0 SPI or V1.5 SPI + MTCAP V1.5 SPI / mtac is a fallback mechanism in case of failure of LoRa MCARD detection
+	mtac_v1.0|mtac_v1.5|mtac_refresh_v1.5|mtcap|mtac)		#Multitech MTAC V1.0 SPI or V1.5 SPI + MTCAP V1.5 SPI / mtac is a fallback mechanism in case of failure of LoRa MCARD detection
 		echo "SERIALMODE=spi" >> $ROOTACT/usr/etc/lrr/_parameters.sh
 		echo "BOARDTYPE=x1" >> $ROOTACT/usr/etc/lrr/_parameters.sh
 		echo "SERVICELRR=/etc/init.d/lrr" >> $ROOTACT/usr/etc/lrr/_parameters.sh
@@ -796,10 +825,14 @@ case $SYSTEM in
 		checkSupportUserGemtek
 		useBashInteadOfDash
 	;;
-	linux-x86) #linux 32 bits generic with semtech pico via tty
+	linux-x86|linux-x86_64) #linux 32.64 bits generic with semtech pico via tty
 		echo "SERIALMODE=tty" >> $ROOTACT/usr/etc/lrr/_parameters.sh
 		echo "BOARDTYPE=x1" >> $ROOTACT/usr/etc/lrr/_parameters.sh
 		echo "SERVICELRR=/etc/init.d/lrr" >> $ROOTACT/usr/etc/lrr/_parameters.sh
+		LRROUI=$($ROOTACT/lrr/com/shells/getid.sh -o)
+		LRRGID=$($ROOTACT/lrr/com/shells/getid.sh -u)
+		echo "LRROUI=$LRROUI" >> $ROOTACT/usr/etc/lrr/_parameters.sh
+		echo "LRRGID=$LRRGID" >> $ROOTACT/usr/etc/lrr/_parameters.sh
 #		cat $ROOTACT/lrr/com/lrrservice.sh | sed "s?_REPLACEWITHROOTACT_?$ROOTACT?" > /etc/init.d/lrr
 #		chmod +x /etc/init.d/lrr
 #		update-rc.d lrr defaults
@@ -823,6 +856,8 @@ case $SYSTEM in
                #         ln -s /etc/init.d/lrr /etc/rc6.d/K01lrr
                # fi
         ;;
+
+
 esac
 
 echo	"System configuration done"

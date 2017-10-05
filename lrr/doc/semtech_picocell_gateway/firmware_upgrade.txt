@@ -1,0 +1,17 @@
+
+1) compile dfu-util package
+
+git clone git://git.code.sf.net/p/dfu-util/dfu-util
+./autogen.sh
+./configure
+make
+
+2) Put the USB key in DFU mode
+
+./picoGW_hal/util_boot/util_boot
+
+3) Load the firmware
+
+dfu-util/src/dfu-util -a 0 -D picoGW_mcu/bin/pgw_fw_usb.dfu
+
+

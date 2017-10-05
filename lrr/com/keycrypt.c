@@ -193,18 +193,48 @@ int	main(int argc,char *argv[])
 	unsigned	char	ahxcrypted[512];
 	unsigned	char	bincrypted[512];
 	unsigned	char	uncrypted[512];
+	char	var4key[512];
 	int	ret;
 	int	aschex;
 	int	lgbin;
 	char	*pt;
 
-	while	((opt=getopt(argc,argv,"vd")) != -1)
+	var4key[0] = '\0';
+	while	((opt=getopt(argc,argv,"vdk:")) != -1)
 	{
 		switch	(opt)
 		{
 		case	'v'	: verbose	= 1; 			break;
 		case	'd'	: encrypt	= 0;	decrypt	= 1; 	break;
+		case	'k'	: strcpy((char *)var4key, optarg);		break;
 		}
+	}
+
+	// non interactive, decrypt one value
+	if (var4key[0])
+	{
+		// get the value
+		strcpy((char *)bufftext, argv[argc-1]);
+		lg = strlen((char *)bufftext);
+
+		// get the key from the environment variable
+		pt = getenv(var4key);
+		if (!pt)
+			exit(1);
+		key = (unsigned char *)pt;
+
+		// unencryption
+		lrr_keyInit();
+		ret	= lrr_keyDec(bufftext,-1,key,iv,uncrypted,500,aschex=0);
+		if	(ret < 0)
+		{
+			printf("error ret=%d line=%d\n",ret,__LINE__);
+			exit(1);
+		}
+
+		uncrypted[ret]	= '\0';
+		printf	("%s\n", uncrypted);
+		exit(0);
 	}
 
 	if	(argc > 1)

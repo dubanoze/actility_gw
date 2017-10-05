@@ -23,7 +23,7 @@ then
 	if [ "$REG_COMP_VERS" != "$COMP_VERS" ]
 	then
 		echo "The required version for rtbase is $REG_COMP_VERS not $COMP_VERS"
-		echo "If you want to ignore this warning remove reg_comp_libs/$SYSTEM/rtbase.version"
+		echo "If you want to ignore this error remove reg_comp_libs/$SYSTEM/rtbase.version"
 		exit 1
 	fi
 else
@@ -84,6 +84,18 @@ CleanManifest()
 	rm -rf ./scripts
 }
 
+GenRuntimeSystem()
+{
+	if	[ ! -f $ROOTACT/rtbase/base/TARGET ]
+	then
+		echo	"cannot find $ROOTACT/rtbase/base/TARGET"
+		exit	1
+	fi
+	mkdir -p $ROOTACT/lrr/base
+	cp $ROOTACT/rtbase/base/TARGET $ROOTACT/lrr/base/TARGET
+	echo $SYSTEM > $ROOTACT/lrr/base/SYSTEM
+}
+
 case  $# in
 	0)
 		Compile
@@ -102,6 +114,7 @@ case  $# in
 				echo "#####"
 				echo "#####	Generating runtime package"
 				echo "#####"
+				GenRuntimeSystem
 				GenGitStatus
 				GenManifest
 				sh ${MKPKGRUNTIME} -p $SELF

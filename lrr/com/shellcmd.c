@@ -938,6 +938,40 @@ static	int	BuiltInCmd(t_lrr_pkt *downpkt,char *parcmd,char *params)
 		LapPutOutQueue(lk,(u_char *)&resppkt,resppkt.lp_szh);
 		return	CMD_BUILTIN;
 	}
+	if	(strcmp(cmd,"beacon") == 0)
+	{
+		struct	timeval	tv;
+		char	when[128];
+
+		memset	(&tv,0,sizeof(tv));
+		tv.tv_sec		= LgwBeaconUtcTime.tv_sec;
+		rtl_gettimeofday_to_iso8601date(&tv,NULL,when);
+
+		sprintf	(resp,"REQCNT=%u\nSNDCNT=%u\nDUPCNT=%u\nLATCNT=%u\nUTCSEC=%u\nUTC=%s\nLASTCAUSE=%02x\n",
+		LgwBeaconRequestedCnt,LgwBeaconSentCnt,
+		LgwBeaconRequestedDupCnt,LgwBeaconRequestedLateCnt,
+		(u_int)tv.tv_sec,when,LgwBeaconLastDeliveryCause);
+		TerminateCmdBuiltIn(downpkt,0,resp);
+		LapPutOutQueue(lk,(u_char *)&resppkt,resppkt.lp_szh);
+		return	CMD_BUILTIN;
+	}
+	if	(strcmp(cmd,"classcmc") == 0)
+	{
+		struct	timeval	tv;
+		char	when[128];
+
+		memset	(&tv,0,sizeof(tv));
+		tv.tv_sec		= LgwClassCUtcTime.tv_sec;
+		rtl_gettimeofday_to_iso8601date(&tv,NULL,when);
+
+		sprintf	(resp,"REQCNT=%u\nSNDCNT=%u\nDUPCNT=%u\nLATCNT=%u\nUTCSEC=%u\nUTC=%s\nLASTCAUSE=%02x\n",
+		LgwClassCRequestedCnt,LgwClassCSentCnt,
+		LgwClassCRequestedDupCnt,LgwClassCRequestedLateCnt,
+		(u_int)tv.tv_sec,when,LgwClassCLastDeliveryCause);
+		TerminateCmdBuiltIn(downpkt,0,resp);
+		LapPutOutQueue(lk,(u_char *)&resppkt,resppkt.lp_szh);
+		return	CMD_BUILTIN;
+	}
 	if	(strcmp(cmd,"configrefresh") == 0)
 	{
 		DoConfigRefresh(0);
@@ -1282,6 +1316,8 @@ static	int	BuiltInCmd(t_lrr_pkt *downpkt,char *parcmd,char *params)
 	{
 		int	tr	= 0;
 		int	ret;
+		char	tmp[32];
+		extern	int TraceLevelP;
 
 		ret	= sscanf(params,"%d",&tr);
 		if	(ret != 1)
@@ -1291,6 +1327,7 @@ static	int	BuiltInCmd(t_lrr_pkt *downpkt,char *parcmd,char *params)
 		{
 			if	(tr >= 0 && tr <= 3)
 			{
+				TraceLevelP	= tr;
 				TraceLevel	= tr;
 				rtl_tracelevel(TraceLevel);
 				if	(strcmp(cmd,"tracep") == 0)
@@ -1299,7 +1336,27 @@ static	int	BuiltInCmd(t_lrr_pkt *downpkt,char *parcmd,char *params)
 			else
 				resppkt.lp_u.lp_cmd_resp.rp_code	= 1;
 		}
-		sprintf	(resp,"LEVEL=%d\nRAMDIR=%d\n",TraceLevel,LogUseRamDir);
+		sprintf	(tmp,"%d",TraceLevelP);
+		if	(tmp[0] == '0')	strcpy(tmp,"<unset>");
+		sprintf	(resp,"LEVEL=%d\nRAMDIR=%d\nLEVELP=%s\nFILESIZE=%d\n",
+				TraceLevel,LogUseRamDir,tmp,TraceSize);
+		LapPutOutQueue(lk,(u_char *)&resppkt,resppkt.lp_szh);
+		return	CMD_BUILTIN;
+	}
+	// Just for testing NFR997 until lrc send partition id
+	if	(strcmp(cmd,"masterlrc") == 0)
+	{
+		int	idx	= 0;
+		int	ret;
+
+		ret	= sscanf(params,"%d",&idx);
+		if	(ret == 1)
+		{
+			MasterLrc = idx;
+			RTL_TRDBG(1,"Set masterlrc=%d\n\n", MasterLrc);
+		}
+		strcpy	(resp,"");
+		TerminateCmdBuiltIn(downpkt,0,resp);
 		LapPutOutQueue(lk,(u_char *)&resppkt,resppkt.lp_szh);
 		return	CMD_BUILTIN;
 	}

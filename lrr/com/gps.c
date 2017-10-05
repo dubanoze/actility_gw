@@ -92,8 +92,8 @@ static void     GpsMainLoop();
 static void     GpsUpdated(struct timespec *utc_from_gps, struct timespec * ubxtime_from_gps, LGW_COORD_T *loc_from_gps,char *rawbuff);
 #ifdef REF_DESIGN_V2
 static int      GpsEnable(char *gps_path, int *fd_gps);
-#endif /* REF_DESIGN_V2 */
 static void     GpsDebugTermios(struct termios ttyopt, unsigned int verbose_lvl);
+#endif /* REF_DESIGN_V2 */
 
 
 /*
@@ -282,7 +282,6 @@ static int GpsEnable(char *gps_path, int *fd_gps)
        read will block for until the lesser of VMIN or requested chars have been received */
     ttyopt.c_cc[VMIN]  = 1;     /* byte granularity at init time to ensure we get all UBX responses */
     ttyopt.c_cc[VTIME] = 0;
-    GpsDebugTermios(ttyopt, 4); /* Log termios flag configuration at verbose lvl 4 */
 
 #else
     ttyopt.c_cflag |= CLOCAL; /* local connection, no modem control */
@@ -295,6 +294,7 @@ static int GpsEnable(char *gps_path, int *fd_gps)
     ttyopt.c_iflag |= IGNCR; /* Ignore carriage return on input */
     ttyopt.c_lflag |= ICANON; /* enable canonical input */
 #endif /* HAL_VERSION_5 */
+    GpsDebugTermios(ttyopt, 4); /* Log termios flag configuration at verbose lvl 4 */
 
     /* Set new TTY serial ports parameters */
     x = tcsetattr( *fd_gps, TCSANOW, &ttyopt );
@@ -417,11 +417,10 @@ static void GpsMainLoop()
                 /************************
                  *  Found UBX sync char *
                  ************************/
-                RTL_TRDBG(4, "GPS UBX frame\n", frame_size);
 
                 /* Determine message type */
                 ubxmsg_type = UBX_UNDEFINED;
-                x = sx1301ar_get_ubx_type(buff, (wr_idx - rd_idx), &ubxmsg_type, &frame_size);
+                x = sx1301ar_get_ubx_type(&buff[rd_idx], (wr_idx - rd_idx), &ubxmsg_type, &frame_size);
                 if (x != 0) {
                     RTL_TRDBG(1, "ERROR: sx1301ar_get_ubx_type failed; %s\n", sx1301ar_err_message(sx1301ar_errno));
                     GpsStop();
@@ -431,11 +430,12 @@ static void GpsMainLoop()
                 /* /!\ This code works on uBlox GPS modules, you might have to modify the code if used with another brand of GPS receivers */
                 if (ubxmsg_type == UBX_NAV_TIMEGPS) {
                     /* Parse NAV-TIMEGPS frame */
-                    x = sx1301ar_parse_ubx_timegps(buff, frame_size, &gpstime);
+                    x = sx1301ar_parse_ubx_timegps(&buff[rd_idx], frame_size, &gpstime);
                     if (x != 0) {
                         RTL_TRDBG(1, "ERROR: sx1301ar_parse_ubx_timegps failed; %s\n", sx1301ar_err_message(sx1301ar_errno));
                         GpsStop();
                     }
+                    RTL_TRDBG(4, "GPS UBX frame type UBX_NAV_TIMEGPS (%d bytes) gpstime=%lu,%09lu seconds\n", frame_size, gpstime.tv_sec, gpstime.tv_nsec);
                     //FIXME GpsUpdated(NULL, &gpstime, NULL, NULL);
                 }
             }
@@ -452,11 +452,11 @@ static void GpsMainLoop()
                 {
                     /* found end marker */
                     frame_size = nmea_end_ptr - &buff[rd_idx] + 1;
-                    memcpy(&svbuff, &buff[rd_idx], frame_size-2);  /* -2 is to avoid the end of frame char: 0x0A 0x0D */
+                    memcpy(&svbuff, &buff[rd_idx], frame_size-2);  /* -2 is to avoid the end of frame EOL char for display (0x0A 0x0D) */
 
                     /* Determine message type */
                     msg_type = NMEA_UNDEFINED;
-                    x = sx1301ar_get_nmea_type(buff, frame_size, &msg_type);
+                    x = sx1301ar_get_nmea_type(&buff[rd_idx], frame_size, &msg_type);
                     if (x != 0) {
                         RTL_TRDBG(1, "ERROR: sx1301ar_get_nmea_type failed; %s\n", sx1301ar_err_message(sx1301ar_errno));
                         GpsStop();
@@ -470,7 +470,7 @@ static void GpsMainLoop()
                         //utc_fresh = false;
 
                         /* Parse RMC frame */
-                        x = sx1301ar_parse_rmc(buff, frame_size, &utc_from_gps, &loc_from_gps);
+                        x = sx1301ar_parse_rmc(&buff[rd_idx], frame_size, &utc_from_gps, &loc_from_gps);
                         if (x == 0)
                         {
                             //FIXME GpsUpdated(&utc_from_gps, NULL, &loc_from_gps, svbuff);
@@ -509,7 +509,7 @@ static void GpsMainLoop()
                         RTL_TRDBG(4, "GPS NMEA GGA frame (%d bytes): \"%s\"\n", frame_size, svbuff);
 
                         /* Parse GGA frame */
-                        x = sx1301ar_parse_gga(buff, frame_size, &loc_from_gps, &nsat, &hdop);
+                        x = sx1301ar_parse_gga(&buff[rd_idx], frame_size, &loc_from_gps, &nsat, &hdop);
                         if (x == 0)
                         {
                             /* If metrics are good enough, trigger a sync */
@@ -847,6 +847,7 @@ static void GpsUpdated(struct timespec * utc_from_gps, struct timespec * ubxtime
 
 
 
+#ifdef REF_DESIGN_V2
 static void GpsDebugTermios(struct termios ttyopt, unsigned int verbose_lvl)
 {
     RTL_TRDBG(verbose_lvl, "GPS tty flags CLOCAL = %d\n", (ttyopt.c_cflag & CLOCAL)?1:0);
@@ -868,6 +869,7 @@ static void GpsDebugTermios(struct termios ttyopt, unsigned int verbose_lvl)
     RTL_TRDBG(verbose_lvl, "GPS tty flags cc[VMIN] = %d\n", ttyopt.c_cc[VMIN]);
     RTL_TRDBG(verbose_lvl, "GPS tty flags cc[VTIME] = %d\n", ttyopt.c_cc[VTIME]);
 }
+#endif /* REF_DESIGN_V2 */
 
 
 #else /* If NOT defined WITH_GPS */

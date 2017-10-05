@@ -120,7 +120,7 @@ case	$SYSTEM	in
 			echo "Can not found [$file]"
 		fi
 	;;
-	mtcap|mtac_v1.5)
+	mtcap|mtac_v1.5|mtac_refresh_v1.5)
 		file="$ROOTACT/lora_gateway/util_spectral_scan/util_spectral_scan"
 		if [ -f "$file" ]
 		then
@@ -130,7 +130,7 @@ case	$SYSTEM	in
 			echo "Can not found [$file]"
 		fi
 	;;
-	fclamp|mtac_v1.0|mtac_usb_v1.0|natrbpi)
+	fclamp|mtac_v1.0|mtac_usb_v1.0|natrbpi_usb_v1.0|rbpi_v1.0)
 		echo    "Can't compile this module on $SYSTEM as there is no sx1272 with FPGA in GW 1.0"
 	;;
 	*)

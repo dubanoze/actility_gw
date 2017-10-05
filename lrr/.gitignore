@@ -12,6 +12,8 @@ sftp/sftp
 nano/nano
 gitstatus.txt
 com/tclassb
+base/SYSTEM
+base/TARGET
 .settings/
 .cproject
 .project

@@ -95,8 +95,16 @@ unsigned	int	LgwNbChanDownError;
 unsigned	int	LgwNbDelayError;
 unsigned	int	LgwNbDelayReport;
 u_int			LgwBeaconRequestedCnt;
+u_int			LgwBeaconRequestedDupCnt;
+u_int			LgwBeaconRequestedLateCnt;
 u_int			LgwBeaconSentCnt;
 u_char			LgwBeaconLastDeliveryCause;
+
+u_int			LgwClassCRequestedCnt;
+u_int			LgwClassCRequestedDupCnt;
+u_int			LgwClassCRequestedLateCnt;
+u_int			LgwClassCSentCnt;
+u_char			LgwClassCLastDeliveryCause;
 
 #ifdef REF_DESIGN_V2
 int	LastTmoaRequested[SX1301AR_MAX_BOARD_NB];	// ms + 10%
@@ -753,7 +761,7 @@ int	ChannelConfigure(int hot,int config)
 RTL_TRDBG(1,"logicchan%03d G%d n='%s' frhz=%d m=0x%02x bandw=0x%02x datar=0x%02x power=%d power-lost+gain[0]=%d rx2=%d datarrx2=0x%02x scantime=%d\n",
 		p->channel,p->subband,p->name,p->freq_hz,p->modulation,
 		p->bandwidth,p->datarate,
-		p->power,p->power-AntennaGain[0]+CableLoss[0],
+		p->power,(int)roundf(p->power-AntennaGain[0]+CableLoss[0]),
 		p->usedforrx2,p->dataraterx2,p->lbtscantime);
 
 	}
@@ -793,7 +801,7 @@ RTL_TRDBG(1,"sortchandn frhz=%d index=%d\n",TbChannelEntryDn[i].freq_hz,
 fprintf(f,"logicchan%03d G%d n='%s' frhz=%d m=0x%02x bandw=0x%02x datar=0x%02x power=%d power-lost+gain[0]=%d rx2=%d datarrx2=0x%02x scantime=%d\n",
 		p->channel,p->subband,p->name,p->freq_hz,p->modulation,
 		p->bandwidth,p->datarate,
-		p->power,p->power-AntennaGain[0]+CableLoss[0],
+		p->power,(int)roundf(p->power-AntennaGain[0]+CableLoss[0]),
 		p->usedforrx2,p->dataraterx2,p->lbtscantime);
 
 	}
@@ -1178,9 +1186,9 @@ int	LgwSendPacket(t_lrr_pkt *downpkt,int seqnum,int p802,int ack)
 		RTL_TRDBG(1,"board out of bounds (%d), forced to 0\n", board);
 		board = 0;
 	}
-	if	(downpkt->lp_beacon || downpkt->lp_classb)
+	if	(downpkt->lp_beacon || downpkt->lp_classb || downpkt->lp_classcmc)
 	{
-		RTL_TRDBG(3,"PKT SEND beacon or classb direct queueing\n");
+		RTL_TRDBG(3,"PKT SEND beacon or classb or classcmc direct queueing\n");
 		goto	queue_msg;
 	}
 	if	(downpkt->lp_delay == 0)
@@ -1441,6 +1449,9 @@ static	void	LgwBootLoop()
 static	int count_thread;
 static	void	cleanup_thread(void *a)
 {
+#ifdef	WITH_TTY
+	LgwStop();
+#endif
 	int	nbm = rtl_imsgRemoveAll(LgwQ);
 	RTL_TRDBG(0,"stop lrr.x/lgw th=%lx pid=%d count=%d nbm=%d\n",
 			(long)pthread_self(),getpid(),--count_thread,nbm);
@@ -1544,7 +1555,7 @@ static	void	LgwMainLoop()
 				{
 					struct timespec utc;
 					LgwEstimUtc(&utc);
-					RTL_TRDBG(1, "TX in use %d board %d tmoa req=%dms eutc=(%u,%ums)\n",
+					RTL_TRDBG(1, "TX in use %d board %d tmoa req=%dms eutc=(%u,%03ums)\n",
 						txstatus[b], b, CurrTmoaRequested[b],
 						utc.tv_sec, utc.tv_nsec/1000000);
 				}
@@ -1554,7 +1565,7 @@ static	void	LgwMainLoop()
 			{
 				struct timespec utc;
 				LgwEstimUtc(&utc);
-				RTL_TRDBG(1,"TX in use %d %d eutc=(%u,%ums)\n",
+				RTL_TRDBG(1,"TX in use %d %d eutc=(%u,%03ums)\n",
 					txstatus, CurrTmoaRequested,
 					utc.tv_sec, utc.tv_nsec/1000000);
 			}

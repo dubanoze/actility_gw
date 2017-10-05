@@ -90,7 +90,7 @@ void	StartCmdThread();
 unsigned int CmdCountOpenSsh();
 unsigned int CmdCountRfScan();
 
-int8_t 	GetTxCalibratedEIRP(int8_t tx_requested, int8_t antenna_gain, int8_t cable_loss, uint8_t board, uint8_t rfc);
+int8_t 	GetTxCalibratedEIRP(int8_t tx_requested, float antenna_gain, float cable_loss, uint8_t board, uint8_t rfc);
 
 void	DoLocKeyRefresh(int delay, char ** resp);
 void	DoConfigRefresh(int delay);

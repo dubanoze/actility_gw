@@ -58,9 +58,11 @@
 #define	LP_C1_BUSY		0xA3	// Radio busy tx
 #define	LP_C1_LBT		0xA4	// listen before talk
 #define	LP_C1_DELAY		0xB0	// Too late for rx1
+#define	LP_C1_PAYLOAD_SIZE	0xB1	// Too big for rx1/rx2
+#define	LP_C1_LRC		0xC0	// LRC chooses RX2
 #define	LP_C1_DTC_LRR		0xD0	// DTC detected by LRR
 #define	LP_C1_DTC_LRC		0xDA	// DTC detected by LRC
-#define	LP_C1_LRC		0xC0	// LRC chooses RX2
+#define LP_C1_DWELL_LRC		0xDB	// Max DM dwell time constraint detected by the LRC
 #define	LP_C1_MAXTRY		0xE0	// Tx immediate failure classC
 #define	LP_C1_NETID_LRC		0xF0	// NETID
 
@@ -74,6 +76,7 @@
 #define	LP_C2_DELAY		0xB0	// Too late for rx1
 #define	LP_C2_DTC_LRR		0xD0	// DTC detected by LRR
 #define	LP_C2_DTC_LRC		0xDA	// DTC detected by LRC
+#define	LP_C2_DWELL_LRC		0xDB	// Max DM dwell time constraint detected by the LRC
 #define	LP_C2_LRC		0xC0	// LRC chooses RX2
 #define	LP_C2_MAXTRY		0xE0	// Tx immediate failure classC (n/a)
 #define	LP_C2_NETID_LRC		0xF0	// NETID
@@ -83,11 +86,13 @@
 #define	LP_CB_RADIO_STOP	0xA0	// Radio stopped
 #define	LP_CB_RADIO_STOP_DN	0xA1	// Downlink radio stopped
 #define	LP_CB_NA		0xA2	// classB not available (GPS,sync,...)
+#define	LP_CB_NA_GPS_DOWN	0xA2	// classB not available because LRR GPS is down
 #define	LP_CB_BUSY		0xA3	// Radio busy tx
 #define	LP_CB_LBT		0xA4	// listen before talk
 #define	LP_CB_DELAY		0xB0	// Too late for rx1
 #define	LP_CB_DTC_LRR		0xD0	// DTC detected by LRR
 #define	LP_CB_DTC_LRC		0xDA	// DTC detected by LRC
+#define LP_CB_DWELL_LRC		0xDB	// Max DM dwell time constraint detected by the LRC
 #define	LP_CB_LRC		0xC0	// LRC chooses RX2
 #define	LP_CB_MAXTRY		0xE0	// Tx immediate failure classC (n/a)
 
@@ -98,7 +103,8 @@
 #define	LP_RADIO_PKT_ACKMAC	4	// downlink only
 #define	LP_RADIO_PKT_DELAY	8	// downlink only
 #define	LP_RADIO_PKT_PINGSLOT	16	// downlink Class B
-#define	LP_RADIO_PKT_FORKED	32
+//#define	LP_RADIO_PKT_FORKED	32
+#define	LP_RADIO_PKT_LORA_E	32
 #define	LP_RADIO_PKT_802154	64	// downlink only
 #define	LP_RADIO_PKT_NOCRC	128	// uplink only
 #define	LP_RADIO_PKT_SZPREAMB	256	// downlink only
@@ -234,8 +240,9 @@ typedef	struct	LP_STRUCTPACKED	s_lrr_qos
 	t_lrr_gpsco	qs_gps;
 	double		qs_instantPER;
 	u_char		qs_invalid;   	// 0=Valid !0 = Invalid
-	u_char		qs_ftq;		// fine time qualifier
+	u_char		qs_ftq;		// fine time qualifier discared if ...
 	u_int		qs_cookie;	// sNS.c store a uniq Id, used to retrieve context
+	u_char		qs_lrrftq;	// fine time qualifier as said by LRR
 }	t_lrr_qos;
 #endif
 
@@ -266,6 +273,8 @@ typedef	struct	LP_STRUCTPACKED	s_lrr_capab
 	u_char	li_lbtFtr;		// support LBT feature
 	u_char	li_classBFtr;		// support Class B feature
 	u_char	li_freqdnFtr;		// support of dynamic downlink frequency
+	u_char	li_classCMcFtr;		// support Class C multicast (on PPS)
+	u_short	li_versFix;		// level fix version
 }	t_lrr_capab;
 
 typedef	struct	LP_STRUCTPACKED	s_lrr_pkt_radio_var_up
@@ -501,6 +510,7 @@ typedef	struct	LP_STRUCTPACKED	s_lrr_stat_v1
 	u_char	ls_gpsState;			// current gps state
 	u_short	ls_gpsDownCnt;			// count of gps down period
 	u_short	ls_gpsUpCnt;			// count of gps up period
+	u_short	ls_versFix;
 
 }	t_lrr_stat_v1;
 
@@ -592,6 +602,8 @@ typedef	struct	LP_STRUCTPACKED	s_lrr_config
 	u_short	cf_versMinRff;
 	u_short	cf_versRelRff;
 	u_int	cf_rffTime;
+	u_short	cf_versFix;
+	u_short	cf_versFixRff;
 }	t_lrr_config;
 
 typedef	struct	LP_STRUCTPACKED	s_lrr_config_lrc
@@ -619,6 +631,9 @@ typedef struct LP_STRUCTPACKED	s_lrr_config_ants
 	int8_t	cf_RX1_eirp;		// Effective Tx EIRP for RX1 (dBm)
 	int8_t	cf_RX2_tx;		// Requested Tx EIRP for RX2 (dBm)
 	int8_t	cf_RX2_eirp;		// Effective Tx EIRP for RX2 (dBm)
+	int8_t	cf_use_float;		// Set to 1 if floats values non-null
+	float	cf_antgain_f;		// antenna gain (dBm) floating point value
+	float	cf_cableloss_f;		// cable loss (dBm) floating point value
 }	t_lrr_config_ants;
 
 typedef struct LP_STRUCTPACKED s_lrr_custom_ver
@@ -779,6 +794,23 @@ typedef	struct	LP_STRUCTPACKED	s_lrr_twa_lrrid
 	u_int		tl_lrrid;
 }	t_lrr_twa_lrrid;
 
+typedef	struct	LP_STRUCTPACKED	s_lrr_partition_id
+{
+	u_char		pi_partition_id;
+}	t_lrr_partition_id;
+
+typedef	struct	LP_STRUCTPACKED	s_lrr_multicast_dn
+{
+	u_int		mc_gss;
+	u_int		mc_gns;
+	u_char		mc_spfact;
+	u_char		mc_freq[3];
+	u_char		mc_chain;	// antenna indice
+	u_char		mc_channel;
+	u_int64_t	mc_deveui;
+	u_short		mc_fcntdn;
+}	t_lrr_multicast_dn;
+
 #define	lp_lrrid	lp_lrxid
 #define	lp_lrridext	lp_lrxidext
 #define	lp_lrridpref	lp_lrxidpref
@@ -811,6 +843,8 @@ typedef	struct	LP_STRUCTPACKED	s_lrr_twa_lrrid
 #define	lp_gwuid	lp_u.lp_send_lrruid.lu_gwuid
 #define	lp_twalrrid	lp_u.lp_twa_lrrid.tl_lrrid
 #define	lp_twalrruidns	lp_u.lp_twa_lrrid.tl_nosupport
+
+#define	lp_partitionid	lp_u.lp_partition_id.pi_partition_id
 
 #define	LP_TYPE_LRR_PKT_RADIO			0
 #define	LP_TYPE_LRR_INF_LRRID			1
@@ -846,8 +880,10 @@ typedef	struct	LP_STRUCTPACKED	s_lrr_twa_lrrid
 #define	LP_TYPE_LRR_INF_LRRUID			31	// LRR >= 2.2.x
 #define	LP_TYPE_LRR_INF_TWA_LRRID		32	// LRR >= 2.2.x
 #define	LP_TYPE_LRR_INF_CONFIG_LRRUID		33	// LRR >= 2.2.x
-#define LP_TYPE_LRR_INF_GPS_UP			34	// LRR >= 2.2.x
-#define LP_TYPE_LRR_INF_GPS_DOWN		35	// LRR >= 2.2.x
+#define LP_TYPE_LRR_INF_GPS_UP			34	// LRR >= 2.2.31
+#define LP_TYPE_LRR_INF_GPS_DOWN		35	// LRR >= 2.2.31
+#define LP_TYPE_LRR_PKT_MULTICAST_DN		36	// LRR => 2.2.40
+#define	LP_TYPE_LRR_INF_PARTITIONID		37	// LRR => 2.2.44
 
 #ifdef	LP_MODULE_LRC
 
@@ -901,7 +937,6 @@ typedef	struct	LP_STRUCTPACKED	s_lrr_pkt
 		t_lrr_shell_cmd		lp_shell_cmd;
 		t_lrr_cmd_resp		lp_cmd_resp;
 		t_lrr_power		lp_power;
-		t_lrr_gps_st		lp_gps_st;
 #ifdef	LP_MODULE_LRC
 		t_mtc_pkt_up		lp_mtc_pkt_up;
 		t_mtc_pkt_down		lp_mtc_pkt_down;
@@ -909,6 +944,9 @@ typedef	struct	LP_STRUCTPACKED	s_lrr_pkt
 		t_lrr_beacon_dn		lp_beacon_dn;
 		t_lrr_lrruid		lp_send_lrruid;
 		t_lrr_twa_lrrid		lp_twa_lrrid;
+		t_lrr_gps_st		lp_gps_st;
+		t_lrr_multicast_dn	lp_multicast_dn;
+		t_lrr_partition_id	lp_partition_id;
 	}	lp_u;
 
 	// following members are not part of LAP/LRC/LRR network messages
@@ -933,6 +971,7 @@ typedef	struct	LP_STRUCTPACKED	s_lrr_pkt
 	u_char		lp_samepacket;
 	u_char		lp_repeated;
 	float		lp_esp;		// estimated signal power NFR182
+	u_int32_t	lp_devaddrv2; // only used when LRCv2. RAN passes devaddr to DEV with this
 #endif
 
 	// following members are used by LRR modules only
@@ -965,6 +1004,8 @@ typedef	struct	LP_STRUCTPACKED	s_lrr_pkt
 	u_char	lp_bypasslbt;		// classC are sent in TIMESTAMPED mode
 	u_char	lp_stopbylbt;
 	u_char	lp_rx2lrr;		// LRR chooses RX2 windows
+	u_char	lp_classc;		// ~ lp_delay == 0
+	u_char	lp_classcmc;		// classc multicast => on pps
 #endif
 }	t_lrr_pkt;
 

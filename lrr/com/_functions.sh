@@ -95,6 +95,9 @@ _getArgs() {
 			-s)		shift
 					t_use_sftp="${1}"
 					;;
+			-c)		shift
+					t_crypted="1"
+					;;
 			*)		shift ;;
 		esac
 	done
@@ -114,6 +117,13 @@ _getArgs() {
 			echo "ERROR: Password must be set for SFTP mode"
 			return $RET_FAILURE
 		fi
+	fi
+
+	# Specific use by suplog, password is encrypted, key is in environment var SUPLOGKEY
+	if [ "$t_crypted" = "1" ]
+	then
+		DECRYPT="$ROOTACT/lrr/com/keycrypt.x -k SUPLOGKEY "
+		t_password="$($DECRYPT $t_password)"
 	fi
 
 	return $RET_SUCCESS
@@ -212,6 +222,7 @@ lrr_UploadToRemote() {
 			echo "put ${t_local_file} ${t_remote_file}" > ${tmp_sftp_batch_file}
 			${EXESSHPASS} -p "${t_password}" ${EXESFTP} -P ${t_port} ${SSH_OPTIONS} -b ${tmp_sftp_batch_file} "${t_user}@${t_host}"
 			ret=$?
+			if [ $ret == 0 ]; then echo "End of transfer: Success using SFTP"; else echo "End of transfer: ERROR"; fi
 			rm -f ${tmp_sftp_batch_file}
 			return $ret
 		else
@@ -224,12 +235,14 @@ lrr_UploadToRemote() {
 	if [ $? = 0 ]; then
 		echo "lrr_UploadToRemote uses curl"
 		curl -T "${t_local_file}" ftp://${t_user}:"${t_password}"@${t_host}:${t_port}/"${t_remote_file}"
+		if [ $? == 0 ]; then echo "End of transfer: Success using curl"; else echo "End of transfer: ERROR"; fi
 		return $?
 	fi
 	type ftpput > /dev/null 2>&1
 	if [ $? = 0 ]; then
 		echo "lrr_UploadToRemote uses ftpput"
 		ftpput -u ${t_user} -p "${t_password}" -P ${t_port} ${t_host} "${t_remote_file}" "${t_local_file}"
+		if [ $? == 0 ]; then echo "End of transfer: Success using ftpput"; else echo "End of transfer: ERROR"; fi
 		return $?
 	fi
 
@@ -240,7 +253,7 @@ lrr_UploadToRemote() {
 
 lrr_CloseFiles()
 {
-	if [ "$SYSTEM" = "oielec" ]; then
+	if [ "$SYSTEM" = "oielec" -o "$SYSTEM" = "natrbpi_usb_v1.0" -o "$SYSTEM" = "rbpi_v1.0" ]; then
 		return
 	fi
 	for fd in $(ls /proc/$$/fd); do

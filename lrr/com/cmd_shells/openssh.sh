@@ -98,6 +98,15 @@ do
 	esac
 done
 
+KillChild()
+{
+	ppid="$1"
+	[ -z "$ppid" ] && return
+	lstpid=$(grep "^PPid:.*$ppid"  /proc/*/status | sed "s?^/proc/??" | sed "s?/.*??" 2>/dev/null)
+	echo "child $lstpid"
+	kill $lstpid 2> /dev/null
+}
+
 if [ "$AUTOSTART" = "1" ]
 then
 	FILEDST=/tmp/autorevssh.txt
@@ -157,5 +166,6 @@ do
 	sleep	1
 	BREAKCNX=$(expr $BREAKCNX - 1)
 done
+[ "$SYSTEM" = "wirmaar" -o "$SYSTEM" = "ciscoms" -o "$SYSTEM" = "fclamp" ] && KillChild $bkgpid
 kill $bkgpid
 exit 0

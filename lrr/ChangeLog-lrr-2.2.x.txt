@@ -3,6 +3,499 @@
 * LRR
 *******************************************************************************
 
+Version : 2.2.48
+Date    : 2017-09-19
+
+New Features
+------------
+ID      : NFR-0000
+Gateway : linux
+Design  : semtech-picocell
+System  : linux
+HAL     : 0.1.2
+Desc    : porting with new HAL 0.1.2
+
+	!!! the firmware must be upgraded to 0.1.1
+
+	HAL 0.0.1 is no more supported
+
+
+Fixed Bugs:
+-----------
+
+ID      : RDTP-1695
+Gateway : all
+Design  : 2.1
+System  : all
+HAL     : >4.0.1
+Desc    : Mutex crash with LBT when report send on RX2
+
+ID      : RDTP-1694
+Gateway : all
+Design  : 2.1
+System  : all
+HAL     : *
+Desc    : Timing issue for the beacon due to wrong finetimestamping
+	If no AES key is present, force nb_dsp=0 to deactivate finetimestamping
+
+ID      : PT-215
+Gateway : all
+Design  : 2.1
+System  : all
+HAL     : >5.x
+Desc    : Update GPS UBX and NMEA frames algorithm
+	When parsing an unsupported UBX frame, the NMEA frame that follows was not taking into account
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.47
+Date    : 2017-09-15
+
+Fixed Bugs:
+-----------
+
+ID      : RDTP-1234
+Gateway : all
+Design  : all
+System  : all
+HAL     : *
+Desc    : TRACE.log: add 0 for padding decimal part: eutc=(1505143243,51ms) => eutc=(1505143243,051ms)
+
+ID      : RDTP-0000
+Gateway : all
+Design  : all
+System  : all
+HAL     : *
+Desc    : suplog: iptables screen: changes to see interface names and to disable name resolution
+
+ID      : RDTP-0000
+Gateway : all
+Design  : all
+System  : all
+HAL     : *
+Desc    : traces always activated during startup
+
+	During startup before reading configuration files the traces are
+	activated to see potential problems.
+	If the traces are disabled in the configuration, only the startup
+	traces will be logged.
+
+New Features
+------------
+ID      : NFR-0000
+Gateway : All
+Design  : All
+System  : All
+HAL     : N/A
+Desc    : fix level package
+
+	- new format for package version is a.b.c_f where f is the fix level.
+	Fix level is optional from 1 to 255. 0 is implicit, reserved to R&D 
+	and means there is no fix ...
+
+	- new format for package files is lrr-a.b.c[_f]-... 
+
+	- this allows a repacking of a given R&D version
+
+	- fix level is returned to LRC everywhere a.b.c version is used
+		- t_lrr_capab, t_lrr_stat_v1, t_lrr_config
+
+	- $LRR_FIXLEVEL is exported to shell commands
+
+	- on LRC 1.10.x the fix level is reported in "ls" command:
+	[99628a90][01:0019]  [STARTED 2 s -/-] ser:9 pver:1 ver:2.2.47 fix=1
+
+ID      : NFR-0000
+Gateway : All
+Design  : 2.x
+System  : All
+HAL     : N/A
+Desc    : dsp_stat_interval
+Config key: lgw.ini: [board:x].dspstatinter
+
+	parameter of HAL dsp_stat_interval can be set using [board:x].dspstatinter
+	Useful when DSP debug activated in the HAL
+	The unit of this parameter is x10 s. ex: 3 => 30 s
+
+ID      : NFR-0000
+Gateway : All
+Design  : All
+System  : All
+HAL     : N/A
+Desc    : redirect stdout
+Config key: lrr.ini: [trace].stdout
+
+	If this parameter is set, stdout is redirected to a file (freopen)
+	The value must be the filename used for the redirection
+	ex: [trace].stdout=/tmp/stdout
+
+ID	: NFR997
+Gateway : all
+Design	: all
+System  : all
+Desc	: Get configuration from bootserver
+
+	- if bootserver.ini file present, try to download configuration from
+	  bootserver until success (tries every 30 seconds)
+	  bootserver.ini:
+	  [bootserver]
+	          addr=[413abafc16ec325477d482a60126bf17]
+		  addr_crypted_k=0
+		  port=[7eb4ec5f527a3b35ca7b83be47907afe]
+		  port_crypted_k=0
+		  user=[9bf40d42eba86316faa0425eb6561fcb]
+		  user_crypted_k=0
+		  pass=[2d9282d535b2cddc6567c3bc8e270ca9]
+		  pass_crypted_k=0
+
+	  this is done using treatbootsrv.sh shell
+	  it tries to download <fulluid> file via sftp, received in /tmp
+	  ex: try to dl "/7076FF-7076FF01040A" file
+	  if it succeeds, it updates lrr configuration files _state.ini and
+	  dynlap.ini
+	  example of file downloaded "7076FF-7076FF01040A":
+	  RAN_IP1_PORT=2404
+	  LRR_ID=ff01040a
+	  RAN_IP2_PORT=2404
+	  RAN_GROUP_ID=LRC.RAN.0.v1
+	  LRR_UUID=7076FF-7076FF01040A
+	  RAN_IP1_ADDR=192.168.1.39
+	  RAN_IP2_ADDR=192.168.1.11
+	  MASTER_ID=1
+
+	- wait msg LP_TYPE_LRR_INF_PARTITIONID from lrc
+	  until this message is received all radio messages are stored
+
+	- if partitionid received == MASTER_ID, the lrc becomes the master and
+	  the processing continues as usual
+	 
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.46
+Date    : 2017-09-05
+
+Fixed Bugs:
+-----------
+
+ID      : RDTP-690
+Gateway : all
+Design  : all
+System  : all
+HAL     : *
+Desc    : suplog.x - security problem with the menu "Export configuration and log files via FTP"
+	Code injection was still possible for password as it was not filtered.
+	Now password field still accept all characters but their interpretation is blocked.
+
+New Features
+------------
+ID      : RDTP-847
+Gateway : All
+Design  : All
+System  : All
+HAL     : N/A
+Desc    : antenna gain and cable loss shows only integer value
+	Use floating point value for internal AntennaGain and CableLoss
+	Update infrastruct_tp31 for transmitting this floating point value to LRC if not null
+
+
+ID      : RDTP-895
+Gateway : Cisco Warbler / Corsica
+Design  : 2.1
+System  : ciscoms
+HAL     : N/A
+Desc    : Cisco gateways use RSSI_sig instead of RSSI_channel
+	Now using rssi_chan for RSSI
+
+ID      : RDTP-793
+Gateway : All
+Design  : All
+System  : All
+HAL     : N/A
+Desc    : suplog: "Export logs" now uses sftp by default
+	Using ftp is also possible by selecting the 'FTP' option
+	and changing the port to 21
+	Note for wirmav2 only: the file is now uploaded in the home directory of the user,
+	previously it was in /tmp
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.45
+Date    : 2017-08-23
+
+New Features
+------------
+ID      : RDTP-1608
+Gateway : Foxconn Macro 2.1
+Design  : 2.1
+System  : fcloc
+HAL     : 5.0.0
+Desc    : HAL 5.0: Foxconn Macro 2.1 integration (UfiSpace)
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.44
+Date    : 2017-08-21
+
+Fixed Bugs:
+-----------
+
+ID      : RDTP000
+Gateway : all
+Design  : all
+System  : all
+HAL     : *
+Desc    : trace level
+
+A new attribut is created [trace].levelp which overwrites [trace].level, the 
+right place for this attribut is in _state.ini file.
+
+The persistent trace level is saved in _state.ini only if the "tracep X" command
+is used with X > 0. 
+
+This was a mistake to save [trace].level in _state.ini (LRR >= 2.2.15), to 
+correct _state.ini, use "tracep 0".
+
+New Features:
+------------
+ID      : NFR724
+Gateway : linux
+Design  : stpico
+System  : linux
+HAL     : *
+Desc    : UUID for linux with semtech pico
+
+	for dev and tests purposes (use lrr.x --stpicoid)
+
+ID      : NFR000
+Gateway : all
+Design  : all
+System  : all
+HAL     : *
+Desc    : SYSTEM
+
+	the rtbase target used to compile/generate the LRR package is now
+	copied from $ROOTACT/rtbase/base/TARGET to $ROOTACT/lrr/base/TARGET.
+	$ROOTACT/lrr/base/SYSTEM is also created.
+
+	$ROOTACT/lrr/base/TARGET => SYSTEM=linux-x86_64
+	$ROOTACT/lrr/base/SYSTEM => linux-x86_64
+
+	Both files are added to the tarball.
+
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.43
+Date    : 2017-08-07
+
+Fixed Bugs:
+-----------
+
+ID      : RDTP438
+Gateway : WIRMAAR + CISCOMS
+Design  : 2.1
+System  : All
+HAL     : *
+Desc    : force closing openssh after 1 hour
+
+ID      : RDTP969
+Gateway : all
+Design  : 2.1
+System  : All
+HAL     : *
+Desc    : use rfchain with txenable=1 to send downlink packets
+
+New Features:
+-----------
+
+ID	: NFR698
+Gateway : all
+Design	: all
+System  : all
+Desc	: Suplog shows last cause of autorestart/autoreboot
+
+ID	: NFR921
+Gateway : all
+Design	: all
+System  : all
+Desc	: default configuration files for cn470 and cn779 added
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.42
+Date    : 2017-08-03
+
+New Features:
+-----------
+
+ID	: NFR000
+Gateway : Multitech
+Design	: 1.5
+System  : mtac/mtac_v1.5
+HAL     : 4.1.1
+Rtbase	: 1.4.24
+Desc	: Multitech mtac/mtac_v1.5
+
+	+ official HAL 4.1.1 needs to be patched to support FPGA firmawre 28
+
+	+ now uses ramdir for traces (/var/volatile/log/_LRRLOG)
+
+	+ support of GPS (/dev/ttyXRUSB2)
+
+	+ add suplog GUI
+
+	+ add sftp
+
+	+ util_spectral_scan does not work ...
+	
+
+Fixed Bugs:
+-----------
+
+ID	: RDTP-000
+Gateway : Multitech
+Design	: 1.0
+System  : mtac/mtac_usb_v1.0
+HAL     : 
+Desc	: Compile bug + Wrong gps trace error while GW has no GPS 
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.41
+Date    : 2017-08-03
+
+New Features:
+------------
+
+ID	: NFR187
+Gateway : all with GPS connected to radio board (wired PPS)
+Design	: v1.5 / v2.x
+System  : all
+HAL     : all
+Desc	: NFR187 multicast class C on PPS
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.40
+Date    : 2017-07-28
+
+New Features:
+------------
+
+ID	: NFR000
+Gateway : Semtech picocell 
+Design	: 1.0
+System  : linux-x86_64
+HAL     : 0.0.1 ~ 4.1.1
+Desc	: target linux-x86_64 generic to use with a semtech picocell (usb/tty
+
+ID	: NFR000
+Gateway : all
+Design	: all
+System  : all with gps
+HAL     : all
+Desc	: add a built in command to check beacon transmission behavior
+
+lrr shell XXXXXXXX beacon ? 
+<<<
+REQCNT=30			; number of requests reveived
+SNDCNT=15			; number of beacon transmitted to radio board
+DUPCNT=15			; number of duplicated requests reveived
+LATCNT=0			; number of requests reveived too late
+UTCSEC=1501487232		; seconds of the last beacon (UTC)
+UTC=2017-07-31T09:47:12.0+02:00	; date of the last beacon (UTC)
+LASTCAUSE=00			; last cause of transmission
+>>>
+
+
+Fixed Bugs:
+-----------
+
+ID	: FIX1048
+Gateway : tektelic
+Design	: specific
+System  : tektelic
+FPGA	: NA
+Desc	: TEKTELIC: GPS status in Network Manager is always 'no signal', corrected
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
+Version : 2.2.39
+Date    : 2017-07-28
+
+Fixed Bugs:
+-----------
+
+ID      : RDTP-857/FIX5109
+Gateway : All
+Design  : 2.1
+System  : All
+HAL     : > 4.x
+Desc    : LBT is breaking class C devices
+	The current HAL does not accept TX_IMMEDIATE mode when LBT is enabled.
+	Unluckily the LRR has already used TX_IMMEDIATE to send packet for 
+	class C devices.
+
+	To bypass this strict control the LRR now uses TX_TIMESTAMPED + 5ms
+	for class C only when LBT is enabled. This new behaviour can be seen
+	in traces:
+		"LRR DELAY -> tx mode immediate with LBT ..."
+
+ID      : RDTP-680/FIX4589
+Gateway : All
+Design  : 2.1
+System  : All
+HAL     : > 4.x
+Desc    : on LBT failure on RX1 LRR does try RX2
+	for classA if LBT stops the packet the LRR will try RX2
+	for classC if LBT stops the packet the LRR will retry each 3s during 60s
+
+
+New Features:
+------------
+
+ID      : 0000
+Gateway : all
+Design  : 2.x
+System  : all
+HAL     : 4.x/5.x
+Desc    : check PPS reception
+	add an error log when PPS are lost between two calls to the HAL
+	function sx1301ar_synchronize()
+
+	"ERROR: PPS lost x/y" where x is the last number of PPS lost between
+	to calls and y is the number of PPS lost since the start of the
+	process
+
+
+*******************************************************************************
+* LRR
+*******************************************************************************
+
 Version : 2.2.38
 Date    : 2017-07-25
 
@@ -10,10 +503,10 @@ New Features:
 ------------
 ID      : RDTP-1334 / NFR724
 Gateway : Foxconn Pico
-Design	: 1.5
+Design  : 1.5
 System  : fcpico
 HAL     : All
-Desc	: lrr generates the same LRR UUID for all fcpico base stations
+Desc    : lrr generates the same LRR UUID for all fcpico base stations
 	Use "nvram get bs_id" to get the LRR GID part of the UUID instead
 	of calling config_id.sh script
 
@@ -40,7 +533,7 @@ New Features:
 -----------
 
 ID	: NFR724.4b
-Gateway : focxonn pico
+Gateway : foxconn pico
 Design	: 1.5
 System  : fcpico
 HAL     : 4.0.0
@@ -279,21 +772,21 @@ New Features:
 -----------
 
 ID	: NFR724.4
-Gateway : focxonn pico
+Gateway : foxconn pico
 Design	: 1.5
 System  : fcpico
 HAL     : 4.0.0
 Desc	: FCPICO: lrr uid constructed using the bs_id of the config_id.sh command
 
 ID	: NFR724.4
-Gateway : focxonn pico
+Gateway : foxconn pico
 Design	: 1.5
 System  : fcpico
 HAL     : 4.0.0
 Desc	: lrr uid can be viewed in suplog
 
 ID	: NFR724.4b
-Gateway : focxonn pico
+Gateway : foxconn pico
 Design	: 1.5
 System  : fcpico
 HAL     : 4.0.0

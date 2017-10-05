@@ -68,7 +68,7 @@ signedpkgf=/tmp/signedpkg.tar.gz$$
 echo ""
 echo ""
 echo "Signing"
-/usr/bin/openssl dgst -sha1 -sign /opt/sdk_1.1/opkg/keys/private.key -out $sigf $LRRFILE
+/usr/bin/openssl dgst -sha1 -sign /opt/cisco-sdk/opkg/keys/private.key -out $sigf $LRRFILE
 if [ $? -ne 0 ]; then
 	echo "Error in signing"
 	exit 1

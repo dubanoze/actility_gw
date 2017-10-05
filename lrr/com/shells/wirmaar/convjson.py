@@ -44,7 +44,6 @@ for b in range(0, nbboard):
 	    	print '\trssioffsetcoeffb=' + str(data["SX1301_array_conf"][b]["rf_chain_conf"][rf]["rssi_offset_coeff_b"])
 	    except:
 	    	pass
-	    print '\trxenable=1'
 	    print
 
 # generate lut section

@@ -23,7 +23,7 @@ endif
 
 ifeq ($(ARCH_RADIO),SX1301_X1)
 # default options for SPI + SX1301 X1 + GPS on kerlink/wirma
-	CFLAGS += -DWITH_SX1301_X1 -DWITH_GPS
+	CFLAGS += -DWITH_SX1301_X1
 	SEMTECH=lora_gateway_$(ARCH_COMM)_x1/libloragw
 	LIBSEMTECH=$(ROOTACT)/$(SEMTECH)/libloragw.a
 	INCSEMTECH=$(ROOTACT)/$(SEMTECH)/inc
@@ -60,7 +60,7 @@ ifeq ($(SYSTEM),ir910)
 LIB += $(SDK)/usr/lib/libmpsse.a $(SDK)/usr/lib/libftdi1.a $(SDK)/usr/lib/libusb-1.0.a
 endif
 
-ifeq ($(SYSTEM),natrbpi)
+ifeq ($(SYSTEM),natrbpi_usb_v1.0)
 	ifeq ($(ARCH_COMM),usb)
 		LIB += /usr/lib/libmpsse.a
 		MYLDFLAGS += -lftdi -lusb -lcrypto

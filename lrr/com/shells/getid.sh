@@ -46,6 +46,9 @@ case	$SYSTEM in
 		oui='000800'
 		uid=$(mts-io-sysfs show device-id)
 	;;
+	linux*)
+		oui='0016C0'
+		uid=$($ROOTACT/lrr/com/lrr.x --stpicoid)
 esac
 
 # New requirement: results must now be in uppercase

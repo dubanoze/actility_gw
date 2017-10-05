@@ -34,14 +34,17 @@ extern	char	*SpiDevice;
 #elif defined(REF_DESIGN_V2)
 extern	char	*SpiDevice[SX1301AR_MAX_BOARD_NB];
 #endif
+#ifdef	WITH_TTY
+extern	char	*TtyDevice;
+#endif
 extern	int	CfgRadioStop;
 extern	int	CfgRadioDnStop;
 extern	int	DownRadioStop;
 extern	int	MainWantStop;
 extern	int	MainStopDelay;
 
-extern	int	AntennaGain[];
-extern	int	CableLoss[];
+extern	float	AntennaGain[];
+extern	float	CableLoss[];
 extern	char	*RfRegionId;
 extern	u_int	RfRegionIdVers;
 
@@ -55,6 +58,7 @@ extern	struct tref 		Time_reference_gps;
 extern	int			Gps_ref_valid; 
 extern	struct timespec		LgwCurrUtcTime;
 extern	struct timespec		LgwBeaconUtcTime;
+extern	struct timespec		LgwClassCUtcTime;
 extern	time_t			LgwTmmsUtcTime;
 
 extern	struct	timespec	Currtime;
@@ -192,5 +196,17 @@ extern			int	MaxReportDnImmediat;
 extern			int	LogUseRamDir;
 
 extern			u_int	LgwBeaconRequestedCnt;
+extern			u_int	LgwBeaconRequestedDupCnt;
+extern			u_int	LgwBeaconRequestedLateCnt;
 extern			u_int	LgwBeaconSentCnt;
 extern			u_char	LgwBeaconLastDeliveryCause;
+
+extern			u_int	LgwClassCRequestedCnt;
+extern			u_int	LgwClassCRequestedDupCnt;
+extern			u_int	LgwClassCRequestedLateCnt;
+extern			u_int	LgwClassCSentCnt;
+extern			u_char	LgwClassCLastDeliveryCause;
+
+extern			int	MasterLrc;	// NFR997
+
+

@@ -1,7 +1,7 @@
 ### Environment constants 
 
-ARCH ?= arm
-CROSS_COMPILE ?= arm-linux-gnueabihf-
+ARCH ?=
+CROSS_COMPILE ?=
 export
 
 ### general build targets
